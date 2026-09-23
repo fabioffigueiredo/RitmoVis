@@ -53,10 +53,16 @@ const LandscapePhone = ({trimBefore, still = false}: {trimBefore?: number; still
 );
 
 const LandscapeSource = ({trimBefore = 0}: {trimBefore?: number}) => (
-  <Pane left={568} top={211} width={1287} height={682}>
-    <Video src={staticFile('source.mp4')} trimBefore={trimBefore} muted objectFit="contain"
-      style={{width: '100%', height: '100%', backgroundColor: '#000'}} />
-  </Pane>
+  <>
+    <div style={{position: 'absolute', left: 568, top: 162, fontFamily: body,
+      fontSize: 26, fontWeight: 700, color: orange}}>
+      TRECHOS EM MOMENTOS DIFERENTES · NÃO SINCRONIZADOS
+    </div>
+    <Pane left={568} top={211} width={1287} height={682}>
+      <Video src={staticFile('source.mp4')} trimBefore={trimBefore} muted objectFit="contain"
+        style={{width: '100%', height: '100%', backgroundColor: '#000'}} />
+    </Pane>
+  </>
 );
 
 const LandscapeLabels = () => <>
