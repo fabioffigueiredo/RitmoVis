@@ -5,7 +5,9 @@
   "scripts": {
     "studio": "remotion studio src/index.tsx --no-open",
     "render": "remotion render src/index.tsx SquatCounterFinal out/final.mp4",
-    "still": "remotion still src/index.tsx SquatCounterCover out/cover.png"
+    "still": "remotion still src/index.tsx SquatCounterCover out/cover.png",
+    "render:social": "remotion render src/index.tsx SquatCounterSocial out/social.mp4",
+    "still:social": "remotion still src/index.tsx SquatCounterSocialCover out/social-cover.png"
   },
   "dependencies": {
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",

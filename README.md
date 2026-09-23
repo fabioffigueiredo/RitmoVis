@@ -36,7 +36,7 @@ Para aparelho físico, defina sua equipe e um bundle identifier único nas confi
 
 ## Preparar o rascunho de vídeo
 
-O código Remotion pode ser instalado com `cd video && npm ci`. Após colocar mídia autorizada nos nomes listados em [assets](docs/assets-and-licenses.md), use `npm run studio`, `npm run render` ou `npm run still`. Os outputs locais ficam em `video/out/` e não entram no Git. A composição atual descreve um ensaio específico e exige revisão do conteúdo antes de distribuição.
+O código Remotion pode ser instalado com `cd video && npm ci`. Após colocar mídia autorizada nos nomes listados em [assets](docs/assets-and-licenses.md), use `npm run studio`, `npm run render` ou `npm run still` para 16:9; `npm run render:social` e `npm run still:social` geram a variação 4:5. Os outputs locais ficam em `video/out/` e não entram no Git. As composições descrevem um ensaio específico e exigem revisão do conteúdo antes de distribuição.
 
 ## Situação
 

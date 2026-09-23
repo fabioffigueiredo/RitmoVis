@@ -10,7 +10,7 @@ Fluxo ao vivo: câmera → buffer → pose MediaPipe → observação do núcleo
 
 ## Rascunho de vídeo
 
-`video/src/index.tsx` registra as composições Remotion `SquatCounterFinal` e `SquatCounterCover`. `video/src/video.tsx` as monta a partir de mídia em `video/public/`. É um artefato editorial herdado, com referências a um ensaio específico; não é requisito para executar o app. Seus recursos foram intencionalmente omitidos. O vídeo exige revisão de evidência, autorizações e texto antes de renderizar ou publicar.
+`video/src/index.tsx` registra vídeo e capa em 16:9 (`SquatCounterFinal`, `SquatCounterCover`) e 4:5 (`SquatCounterSocial`, `SquatCounterSocialCover`). `video/src/video.tsx` as monta a partir de mídia em `video/public/`. É um artefato editorial herdado, com referências a um ensaio específico; não é requisito para executar o app. Seus recursos foram intencionalmente omitidos. Os vídeos exigem revisão de evidência, autorizações e texto antes de renderizar ou publicar.
 
 ## Limites conhecidos
 

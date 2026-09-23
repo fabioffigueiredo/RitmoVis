@@ -1,5 +1,5 @@
 import {Composition, registerRoot} from 'remotion';
-import {SquatCounterFinal, SquatCounterCover} from './video';
+import {SquatCounterFinal, SquatCounterCover, SquatCounterSocial, SquatCounterSocialCover} from './video';
 
 const Root = () => (
   <>
@@ -18,6 +18,22 @@ const Root = () => (
       fps={30}
       width={1920}
       height={1080}
+    />
+    <Composition
+      id="SquatCounterSocial"
+      component={SquatCounterSocial}
+      durationInFrames={1500}
+      fps={30}
+      width={1080}
+      height={1350}
+    />
+    <Composition
+      id="SquatCounterSocialCover"
+      component={SquatCounterSocialCover}
+      durationInFrames={1}
+      fps={30}
+      width={1080}
+      height={1350}
     />
   </>
 );

@@ -169,3 +169,126 @@ export const SquatCounterCover = () => (
       fontSize: 30, color: orange, fontWeight: 700}}>EXPERIMENTO INICIAL</div>
   </AbsoluteFill>
 );
+
+// Feed-first 4:5 variant. It uses the same unmodified source and iPhone capture
+// as the landscape edition, but keeps the counter readable on narrow screens.
+const SocialHeader = ({title}: {title: string}) => (
+  <div style={{position: 'absolute', left: 48, top: 42, right: 48,
+    fontFamily: display, fontSize: 88, fontWeight: 700, lineHeight: 0.93,
+    color: paper}}>{title}</div>
+);
+
+const SocialFooter = ({text}: {text: string}) => (
+  <div style={{position: 'absolute', left: 50, right: 50, bottom: 55,
+    fontFamily: body, fontSize: 29, color: muted, lineHeight: 1.12}}>{text}</div>
+);
+
+const SocialHook = () => (
+  <AbsoluteFill style={{backgroundColor: ink, color: paper}}>
+    <SocialHeader title="QUANDO ENTRA O +1?" />
+    <Pane left={50} top={228} width={980} height={610}>
+      <Video src={staticFile('phone-full.mov')} trimBefore={735} muted objectFit="cover"
+        style={{width: '100%', height: '100%', objectPosition: 'center 19%'}} />
+    </Pane>
+    <Tag text="TELA REAL DO IPHONE 15 · RECORTE" left={65} top={246} />
+    <div style={{position: 'absolute', left: 50, top: 885, right: 50,
+      fontFamily: body, fontSize: 55, fontWeight: 700, lineHeight: 1.15}}>
+      Só conta quando volta a ficar em pé.
+    </div>
+    <SocialFooter text="Vídeo licenciado importado e analisado no aparelho antes da reprodução." />
+  </AbsoluteFill>
+);
+
+const SocialEvidence = () => {
+  const frame = useCurrentFrame();
+  return (
+    <AbsoluteFill style={{backgroundColor: ink, color: paper}}>
+      <SocialHeader title={frame < 390 ? 'O IPHONE CONTOU?' : 'SÓ VALE NA VOLTA.'} />
+      <Pane left={50} top={200} width={980} height={440}>
+        <Video src={staticFile('source.mp4')} trimBefore={sourceReplayStart} muted objectFit="cover"
+          style={{width: '100%', height: '100%'}} />
+      </Pane>
+      <Tag text="VÍDEO-FONTE" left={65} top={214} color={ink} />
+      <Pane left={50} top={667} width={980} height={440}>
+        <Video src={staticFile('phone-full.mov')} trimBefore={phoneReplayStart} muted objectFit="cover"
+          style={{width: '100%', height: '100%', objectPosition: 'center 19%'}} />
+      </Pane>
+      <Tag text="CAPTURA REAL · IPHONE 15" left={65} top={682} />
+      <div style={{position: 'absolute', left: 50, top: 1155, right: 50,
+        fontFamily: body, fontSize: 43, fontWeight: 700, lineHeight: 1.15}}>
+        {frame < 390 ? 'Arquivo analisado antes desta reprodução.' :
+          frame < 650 ? 'Em pé → descida → fundo → em pé.' :
+          'Contagem local. Não avalia técnica ou segurança.'}
+      </div>
+      <SocialFooter text="MART PRODUCTION / Pexels · MediaPipe Pose Landmarker Full" />
+    </AbsoluteFill>
+  );
+};
+
+const SocialReplay = () => (
+  <AbsoluteFill style={{backgroundColor: ink, color: paper}}>
+    <SocialHeader title="O +1 VEM NO FIM." />
+    <Pane left={50} top={212} width={980} height={565}>
+      <Video src={staticFile('phone-full.mov')} trimBefore={735} muted objectFit="cover"
+        style={{width: '100%', height: '100%', objectPosition: 'center 19%'}} />
+    </Pane>
+    <div style={{position: 'absolute', left: 50, top: 855, right: 50,
+      fontFamily: body, fontSize: 57, fontWeight: 650, lineHeight: 1.35}}>
+      Pose estimada → descida<br />
+      → fundo → retorno<br />
+      <span style={{color: orange}}>+1 apenas ao completar</span>
+    </div>
+    <SocialFooter text="Replay da mesma captura; nenhum esqueleto foi gerado na edição." />
+  </AbsoluteFill>
+);
+
+const SocialVerdict = () => (
+  <AbsoluteFill style={{backgroundColor: ink, color: paper}}>
+    <SocialHeader title="UM CLIPE. QUATRO CICLOS." />
+    <div style={{position: 'absolute', left: 50, top: 270, right: 50,
+      fontFamily: body, fontSize: 49, color: muted}}>CONFERÊNCIA NESTE VÍDEO</div>
+    <div style={{position: 'absolute', left: 50, top: 355, right: 50,
+      display: 'flex', justifyContent: 'space-between'}}>
+      <div><div style={{fontFamily: display, fontSize: 245, lineHeight: 0.8}}>4</div>
+        <div style={{fontFamily: body, fontSize: 44}}>contagem visual</div></div>
+      <div><div style={{fontFamily: display, fontSize: 245, lineHeight: 0.8,
+        color: '#91A6FF'}}>4</div>
+        <div style={{fontFamily: body, fontSize: 44}}>app no iPhone</div></div>
+    </div>
+    <div style={{position: 'absolute', left: 50, top: 720, right: 50, height: 2,
+      backgroundColor: `${paper}55`}} />
+    <div style={{position: 'absolute', left: 50, top: 790, right: 50,
+      fontFamily: body, fontSize: 53, lineHeight: 1.22}}>
+      <span style={{color: orange, fontWeight: 700}}>Experimento inicial.</span><br />
+      Faltam outras condições,<br />
+      50 repetições anotadas e<br />
+      10 min de câmera ao vivo.
+    </div>
+    <SocialFooter text="Fonte: MART PRODUCTION / Pexels 8837118 · sem endosso da pessoa filmada" />
+  </AbsoluteFill>
+);
+
+export const SquatCounterSocial = () => (
+  <AbsoluteFill style={{backgroundColor: ink}}>
+    <Sequence from={0} durationInFrames={180} name="Gancho com contagem real"><SocialHook /></Sequence>
+    <Sequence from={180} durationInFrames={870} name="Fonte e iPhone"><SocialEvidence /></Sequence>
+    <Sequence from={1050} durationInFrames={270} name="Replay da regra"><SocialReplay /></Sequence>
+    <Sequence from={1320} durationInFrames={180} name="Limites"><SocialVerdict /></Sequence>
+  </AbsoluteFill>
+);
+
+export const SquatCounterSocialCover = () => (
+  <AbsoluteFill style={{backgroundColor: ink, color: paper}}>
+    <SocialHeader title="O IPHONE CONTOU?" />
+    <Img src={staticFile('source-frame-complete.png')} style={{position: 'absolute',
+      left: 50, top: 250, width: 980, height: 420, objectFit: 'cover'}} />
+    <Tag text="VÍDEO-FONTE" left={65} top={267} color={ink} />
+    <Img src={staticFile('phone-frame-complete.png')} style={{position: 'absolute',
+      left: 50, top: 690, width: 980, height: 420, objectFit: 'cover',
+      objectPosition: 'center 19%'}} />
+    <Tag text="TELA REAL DO IPHONE" left={65} top={707} />
+    <div style={{position: 'absolute', left: 50, top: 1170, fontFamily: body,
+      fontSize: 48, fontWeight: 700}}>4 ciclos no clipe · 4 no app</div>
+    <SocialFooter text="Experimento inicial · MART PRODUCTION / Pexels" />
+  </AbsoluteFill>
+);
