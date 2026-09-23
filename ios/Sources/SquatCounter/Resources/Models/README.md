@@ -1,0 +1,1 @@
+Baixe os dois bundles oficiais com `Scripts/download_models.sh`. Eles devem permanecer nesta pasta com os nomes `pose_landmarker_lite.task` e `pose_landmarker_full.task` para que `Bundle.main` possa localizá-los.

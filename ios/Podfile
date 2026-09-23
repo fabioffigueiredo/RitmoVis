@@ -1,0 +1,10 @@
+platform :ios, '17.0'
+use_frameworks!
+
+target 'SquatCounter' do
+  pod 'MediaPipeTasksVision'
+end
+
+target 'SquatCounterCoreTests' do
+  inherit! :search_paths
+end

@@ -1,0 +1,59 @@
+name: SquatCounter
+options:
+  minimumXcodeGenVersion: 2.38.0
+settings:
+  base:
+    IPHONEOS_DEPLOYMENT_TARGET: '17.0'
+    SWIFT_VERSION: '6.0'
+schemes:
+  SquatCounter:
+    build:
+      targets:
+        SquatCounter: all
+    test:
+      targets:
+        - SquatCounterCoreTests
+        - SquatCounterUITests
+targets:
+  SquatCounter:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/SquatCounter
+        excludes: [Resources/**]
+      - path: Sources/SquatCounter/Resources
+        buildPhase: resources
+    dependencies:
+      - target: SquatCounterCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.ritmovis
+        INFOPLIST_FILE: Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+  SquatCounterCore:
+    type: framework
+    platform: iOS
+    sources: [Sources/SquatCounterCore]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.ritmovis.core
+        GENERATE_INFOPLIST_FILE: YES
+  SquatCounterCoreTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests/SquatCounterCoreTests]
+    dependencies:
+      - target: SquatCounterCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+  SquatCounterUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [Tests/SquatCounterUITests]
+    dependencies:
+      - target: SquatCounter
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.ritmovis.uitests
+        GENERATE_INFOPLIST_FILE: YES
