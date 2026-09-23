@@ -12,7 +12,7 @@ Teste de câmera em aparelho: pendente. Testes de UI neste novo repositório: pe
 
 ## OBS e pareamento — diagnóstico, não correção
 
-O OBS do Mac lista a câmera do iPhone por **Câmera de Continuidade**; o app iOS usa `AVCaptureDevice` local. A fonte do OBS estar selecionada não comprova quadros válidos durante pareamento. O teste A/B com OBS fechado/aberto, Câmera nativa, app e Xcode pareado/despareado ainda não foi executado: não alterar o estado do telefone sem combinar uma janela de teste. Registrar prévia física, luminância de gravação curta, notificações AVFoundation e logs. A falha observada com pareamento é correlacional; a causa permanece aberta.
+O OBS do Mac lista a câmera do iPhone por **Câmera de Continuidade**; o app iOS usa `AVCaptureDevice` local. A fonte do OBS estar selecionada não comprova quadros válidos durante pareamento. Ao abrir a cena existente, a fonte estava oculta e a prévia em suas propriedades apareceu preta; isso não estabelece a causa nem equivale a um teste com a fonte ativa. O teste A/B com OBS fechado/aberto, Câmera nativa, app e Xcode pareado/despareado ainda não foi executado: não alterar o estado do telefone sem combinar uma janela de teste. Registrar prévia física, luminância de gravação curta, notificações AVFoundation e logs. A falha observada com pareamento é correlacional; a causa permanece aberta.
 
 ## Critérios para uma alegação quantitativa
 
