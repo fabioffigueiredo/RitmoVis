@@ -7,7 +7,7 @@ Este repositório extrai o código dos protótipos `squat-counter-ios` e `squat-
 ## Estrutura
 
 - `ios/`: app SwiftUI, núcleo de contagem, testes e configuração XcodeGen/CocoaPods.
-- `video/`: código de um rascunho Remotion. Não inclui vídeos, gravações de aparelho ou imagens derivadas. A composição não renderiza sem os arquivos descritos em [assets](docs/assets-and-licenses.md).
+- `video/`: código das peças editoriais Remotion em 16:9 e 4:5. Não inclui vídeos, gravações de aparelho ou imagens derivadas. As composições não renderizam sem os arquivos descritos em [assets](docs/assets-and-licenses.md).
 - `docs/`: arquitetura, status de QA e proveniência.
 
 ## Preparar o app
@@ -34,9 +34,9 @@ swift test
 
 Para aparelho físico, defina sua equipe e um bundle identifier único nas configurações do projeto gerado ou em `project.yml` antes de gerar novamente. O identificador `com.example.ritmovis` é apenas um placeholder. A câmera não é validável no simulador.
 
-## Preparar o rascunho de vídeo
+## Preparar o vídeo editorial
 
-O código Remotion pode ser instalado com `cd video && npm ci`. Após colocar mídia autorizada nos nomes listados em [assets](docs/assets-and-licenses.md), use `npm run studio`, `npm run render` ou `npm run still` para 16:9; `npm run render:social` e `npm run still:social` geram a variação 4:5. Os outputs locais ficam em `video/out/` e não entram no Git. As composições descrevem um ensaio específico e exigem revisão do conteúdo antes de distribuição.
+O código Remotion pode ser instalado com `cd video && npm ci`. Após colocar mídia autorizada nos nomes listados em [assets](docs/assets-and-licenses.md), use `npm run studio`, `npm run render` ou `npm run still` para 16:9; `npm run render:social` e `npm run still:social` geram a variação 4:5. Os outputs locais ficam em `video/out/` e não entram no Git. Uma peça foi renderizada e aguarda aprovação no projeto editorial de origem; veja [publicação](docs/publication.md).
 
 ## Situação
 
@@ -44,4 +44,4 @@ O protótipo original teve testes de núcleo/UI e ensaios limitados em iPhone 15
 
 ## Próximos passos
 
-Ver [roadmap](roadmap.md). Nenhuma distribuição, publicação ou licença própria foi definida nesta extração.
+Ver [roadmap](roadmap.md), [decisões](docs/decisions.md) e [publicação](docs/publication.md). Nenhuma distribuição, publicação ou licença própria foi definida nesta extração.

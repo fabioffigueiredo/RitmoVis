@@ -7,3 +7,5 @@
 - Ao mudar thresholds/estado do contador, atualize testes relevantes e registre dispositivo, modelo, câmera, iluminação, frames e contagens esperadas/detectadas antes de afirmar melhoria.
 - Os recursos necessários, as fontes e as lacunas de autorização estão em `docs/assets-and-licenses.md`. Não presuma direito de redistribuição de mídia externa.
 - Diferencie sempre resultados herdados do protótipo e resultados repetidos no repositório independente em `docs/qa-status.md`.
+- Leia `roadmap.md` antes de ampliar escopo: M0 valida uma pessoa; M2 seleciona uma pessoa entre várias; M4 testa contagem simultânea de 2–4 atletas. Não trate `numPoses > 1` como identidade estável.
+- Leia `docs/decisions.md` e `docs/publication.md` antes de mudar modelo, fluxo de dados ou alegações públicas. A peça 4:5 já foi renderizada fora deste repositório e aguarda aprovação; não publique automaticamente.

@@ -8,9 +8,13 @@ Fluxo ao vivo: câmera → buffer → pose MediaPipe → observação do núcleo
 
 `Package.swift` testa o núcleo com `swift test`. `project.yml` gera os alvos iOS; `Podfile` instala MediaPipe. Os modelos `.task` devem estar em `ios/Sources/SquatCounter/Resources/Models/` antes de compilar. A fase de recursos inclui `Resources` uma vez e exclui a pasta da compilação Swift.
 
-## Rascunho de vídeo
+## Vídeo editorial
 
-`video/src/index.tsx` registra vídeo e capa em 16:9 (`SquatCounterFinal`, `SquatCounterCover`) e 4:5 (`SquatCounterSocial`, `SquatCounterSocialCover`). `video/src/video.tsx` as monta a partir de mídia em `video/public/`. É um artefato editorial herdado, com referências a um ensaio específico; não é requisito para executar o app. Seus recursos foram intencionalmente omitidos. Os vídeos exigem revisão de evidência, autorizações e texto antes de renderizar ou publicar.
+`video/src/index.tsx` registra vídeo e capa em 16:9 (`SquatCounterFinal`, `SquatCounterCover`) e 4:5 (`SquatCounterSocial`, `SquatCounterSocialCover`). `video/src/video.tsx` as monta a partir de mídia em `video/public/`. É um artefato editorial de um ensaio específico, não requisito para executar o app. Recursos foram intencionalmente omitidos do Git; os renders finais estão fora deste repositório e aguardam aprovação humana antes de publicar.
+
+## Fronteiras futuras
+
+Para M1–M4, manter interfaces distintas para captura/importação, inferência de pose, associação temporária de pessoa, máquina de estados **por atleta**, feedback revisável e armazenamento/replay. A posição na lista de poses não identifica um atleta. Uma sessão de várias pessoas exige estados, relógios, eventos e relatórios independentes; se o vínculo pessoa↔pose ficar ambíguo, interromper a contagem correspondente. O fluxo de ocupação agregada não deve depender da identidade do treino.
 
 ## Limites conhecidos
 
