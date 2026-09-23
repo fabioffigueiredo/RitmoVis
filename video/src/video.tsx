@@ -186,9 +186,9 @@ const SocialFooter = ({text}: {text: string}) => (
 const SocialHook = () => (
   <AbsoluteFill style={{backgroundColor: ink, color: paper}}>
     <SocialHeader title="QUANDO ENTRA O +1?" />
-    <Pane left={50} top={228} width={980} height={610}>
+    <Pane left={50} top={228} width={980} height={575}>
       <Video src={staticFile('phone-full.mov')} trimBefore={735} muted objectFit="cover"
-        style={{width: '100%', height: '100%', objectPosition: 'center 19%'}} />
+        style={{width: '100%', height: '100%', objectPosition: 'center 21%'}} />
     </Pane>
     <Tag text="TELA REAL DO IPHONE 15 · RECORTE" left={65} top={246} />
     <div style={{position: 'absolute', left: 50, top: 885, right: 50,
@@ -211,7 +211,7 @@ const SocialEvidence = () => {
       <Tag text="VÍDEO-FONTE" left={65} top={214} color={ink} />
       <Pane left={50} top={667} width={980} height={440}>
         <Video src={staticFile('phone-full.mov')} trimBefore={phoneReplayStart} muted objectFit="cover"
-          style={{width: '100%', height: '100%', objectPosition: 'center 19%'}} />
+          style={{width: '100%', height: '100%', objectPosition: 'center 21%'}} />
       </Pane>
       <Tag text="CAPTURA REAL · IPHONE 15" left={65} top={682} />
       <div style={{position: 'absolute', left: 50, top: 1155, right: 50,
@@ -230,7 +230,7 @@ const SocialReplay = () => (
     <SocialHeader title="O +1 VEM NO FIM." />
     <Pane left={50} top={212} width={980} height={565}>
       <Video src={staticFile('phone-full.mov')} trimBefore={735} muted objectFit="cover"
-        style={{width: '100%', height: '100%', objectPosition: 'center 19%'}} />
+        style={{width: '100%', height: '100%', objectPosition: 'center 21%'}} />
     </Pane>
     <div style={{position: 'absolute', left: 50, top: 855, right: 50,
       fontFamily: body, fontSize: 57, fontWeight: 650, lineHeight: 1.35}}>
@@ -281,12 +281,12 @@ export const SquatCounterSocialCover = () => (
   <AbsoluteFill style={{backgroundColor: ink, color: paper}}>
     <SocialHeader title="O IPHONE CONTOU?" />
     <Img src={staticFile('source-frame-complete.png')} style={{position: 'absolute',
-      left: 50, top: 250, width: 980, height: 420, objectFit: 'cover'}} />
-    <Tag text="VÍDEO-FONTE" left={65} top={267} color={ink} />
+      left: 50, top: 200, width: 980, height: 420, objectFit: 'cover'}} />
+    <Tag text="VÍDEO-FONTE" left={65} top={217} color={ink} />
     <Img src={staticFile('phone-frame-complete.png')} style={{position: 'absolute',
-      left: 50, top: 690, width: 980, height: 420, objectFit: 'cover',
-      objectPosition: 'center 19%'}} />
-    <Tag text="TELA REAL DO IPHONE" left={65} top={707} />
+      left: 50, top: 640, width: 980, height: 510, objectFit: 'cover',
+      objectPosition: 'center 21%'}} />
+    <Tag text="TELA REAL DO IPHONE" left={65} top={657} />
     <div style={{position: 'absolute', left: 50, top: 1170, fontFamily: body,
       fontSize: 48, fontWeight: 700}}>4 ciclos no clipe · 4 no app</div>
     <SocialFooter text="Experimento inicial · MART PRODUCTION / Pexels" />
