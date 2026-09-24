@@ -2,6 +2,8 @@
 
 **Estado:** avaliador implementado; corpus real de 50 repetições e ensaio de 10 minutos **pendentes**. O JSON em `ios/Fixtures` é sintético e serve somente para testar a ferramenta.
 
+Em 24/09, 12 vídeos do Histórico do iPhone foram copiados para uma pasta privada fora do repositório. Os números de repetições do Histórico são saída do aplicativo, **não ground truth**. Anotar os ciclos vendo os arquivos originais, manter sessões usadas para ajuste separadas das usadas no gate e não declarar M0 concluído até alcançar o volume e os testes físicos previstos.
+
 ## Coleta
 
 1. Use apenas gravações autorizadas e registre aparelho, câmera, ângulo, iluminação, resolução, modelo Lite/Full e versão do app. Não coloque vídeos pessoais no Git.

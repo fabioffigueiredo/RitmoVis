@@ -10,6 +10,10 @@ Em 2026-09-23, `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift t
 
 Início de M0 em 23/09: foi adicionado o avaliador de anotações `RepEvaluator`, com quatro novos testes (24 testes de núcleo no total, todos aprovados), uma CLI local e um fixture **sintético**. O comando `swift run ritmovis-eval Fixtures/evaluation-synthetic.example.json` produziu TP=2, FP=1, FN=0, incluindo um falso positivo em tentativa incompleta. Esses números testam a ferramenta, não medem o aplicativo em pessoas reais. `xcodegen generate`, `pod install` e novo build iOS Simulator sem assinatura passaram após a inclusão do avaliador; persistem avisos de depreciação AVFoundation já presentes. Consulte `docs/m0-annotation-protocol.md`.
 
+Em 24/09, no worktree `feat/m2-android-a0`, `swift test` aprovou novamente 24 testes; o build iOS Simulator sem assinatura terminou com código zero após baixar os modelos oficiais com checksum, gerar o projeto e instalar os Pods. Permanecem avisos de APIs AVFoundation descontinuadas. Isto verifica compilação, **não** funcionamento da câmera no aparelho físico.
+
+M0 — inventário privado em 24/09: o contêiner do app instalado no iPhone de fabio (`com.fabiofigueiredo.squatcounter.poc20260916`) tinha 25 registros no índice e 12 arquivos de vídeo. Foram copiadas, sem remover os originais, 12 gravações (aproximadamente 113 MiB e 233,3 s) para `~/Library/Application Support/RitmoVis/qa-private/`, fora do Git. O índice soma 33 **contagens automáticas** nos registros com vídeo; elas não são anotações humanas nem comprovam 33 repetições corretas. O manifesto e os hashes permanecem na pasta privada. A anotação de pelo menos 50 ciclos reais, um conjunto independente de validação e o ensaio de câmera por 10 minutos continuam pendentes.
+
 Teste de câmera em aparelho: pendente. Testes de UI neste novo repositório: pendentes. Renderização do vídeo **neste repositório**: indisponível sem os recursos omitidos. Uma peça 4:5 e uma 16:9 foram renderizadas e inspecionadas no projeto editorial de origem em 23/09/2026, mas não integram este Git; veja `docs/publication.md`.
 
 ## OBS e pareamento — diagnóstico, não correção
