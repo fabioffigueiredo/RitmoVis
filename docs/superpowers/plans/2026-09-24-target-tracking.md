@@ -45,11 +45,11 @@
 
 **Interfaces:** Produces `PoseCandidate`, `TrackingDecision`, `TargetTracker.select(_:at:)`, and `TargetTracker.update(_:at:)`; Task 3 consumes them.
 
-- [ ] Write tests for selection, pose-list reordering, crossing ambiguity, disappearance, and recovery only after fresh confirmation.
-- [ ] Run `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --filter TargetTrackerTests`; expect failures for missing types.
-- [ ] Implement minimal association with normalized geometry and conservative ambiguity rejection; no appearance embedding in this tranche.
-- [ ] Run the targeted tests and full `swift test`; expect all green.
-- [ ] Commit only code and tests.
+- [x] Write tests for selection, pose-list reordering, crossing ambiguity, disappearance, and recovery only after fresh confirmation.
+- [x] Run `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --filter TargetTrackerTests`; observed expected missing-type failure.
+- [x] Implement minimal association with normalized geometry and conservative ambiguity rejection; no appearance embedding in this tranche.
+- [x] Run the targeted tests and full `swift test`; 29 tests green.
+- [x] Commit only code and tests.
 
 ### Task 3: Reset partial repetition on identity loss
 
