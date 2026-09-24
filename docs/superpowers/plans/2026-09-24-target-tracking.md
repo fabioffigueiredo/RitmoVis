@@ -69,11 +69,11 @@
 
 **Interfaces:** Consumes Tasks 2–3. Detector returns all candidates; live UI shows selectable people and selected/uncertain state. No count is produced before selection in a multi-person scene.
 
-- [ ] Add integration/UI tests for no selection, tap selection, lost target, and reselection; watch failures.
-- [ ] Set MediaPipe `numPoses`, map each pose to geometry and knee angle, and feed only the selected observation to the counter.
-- [ ] Add on-screen warning and optional audible warning; never count an uncertain candidate.
-- [ ] Run Swift tests, simulator build and UI tests; document any physical-device-only checks.
-- [ ] Commit code and tests.
+- [x] Add core integration tests for no selection, crossing/lost target and reselection; add a synthetic UI test for the selection control. The UI test does not validate real inference.
+- [x] Set MediaPipe `numPoses` to four, map each pose to geometry and knee angle, and feed only the selected observation to the counter.
+- [x] Add on-screen warning and abstention for uncertain identity. Audio warning remains optional and unimplemented.
+- [x] Run 31 Swift tests, iOS builds and three simulator UI tests. The clip UI test was excluded because its licensed asset is intentionally absent; physical iPhone camera preview remained black while paired and is not validated.
+- [x] Commit code and tests.
 
 ### Task 5: Android contract preparation and QA handoff
 

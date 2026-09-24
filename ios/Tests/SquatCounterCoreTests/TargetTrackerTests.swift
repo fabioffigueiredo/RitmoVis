@@ -39,4 +39,21 @@ final class TargetTrackerTests: XCTestCase {
         _ = tracker.select(person(0, x: 0.2), at: 0)
         XCTAssertEqual(tracker.update([person(1, x: 0.8)], at: 0.1), .uncertain)
     }
+
+    func testAmbiguousCrossingInvalidatesPartialRepetition() {
+        var tracker = TargetTracker()
+        var counter = SquatCounter()
+        counter.minimumPhaseDuration = 0
+        _ = tracker.select(person(0, x: 0.40), at: 0)
+        for (time, angle) in [(0.0, 170.0), (0.1, 145), (0.2, 100)] {
+            XCTAssertEqual(tracker.update([person(0, x: 0.40)], at: time), .selected(index: 0))
+            _ = counter.consume(.init(timestamp: time, kneeAngle: angle, confidence: 0.9))
+        }
+        XCTAssertEqual(counter.phase, .bottom)
+        XCTAssertEqual(tracker.update([person(0, x: 0.43), person(1, x: 0.45)], at: 0.3), .uncertain)
+        counter.interruptTracking(at: 0.3)
+        _ = counter.consume(.init(timestamp: 0.4, kneeAngle: 120, confidence: 0.9))
+        _ = counter.consume(.init(timestamp: 0.5, kneeAngle: 165, confidence: 0.9))
+        XCTAssertEqual(counter.repetitions, 0)
+    }
 }

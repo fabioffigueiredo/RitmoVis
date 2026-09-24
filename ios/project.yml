@@ -5,6 +5,7 @@ settings:
   base:
     IPHONEOS_DEPLOYMENT_TARGET: '17.0'
     SWIFT_VERSION: '6.0'
+    DEVELOPMENT_TEAM: 3H85P4UNRA
 schemes:
   SquatCounter:
     build:
@@ -27,7 +28,7 @@ targets:
       - target: SquatCounterCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.ritmovis
+        PRODUCT_BUNDLE_IDENTIFIER: com.fabiofigueiredo.ritmovis.dev
         INFOPLIST_FILE: Info.plist
         GENERATE_INFOPLIST_FILE: NO
   SquatCounterCore:
@@ -36,7 +37,7 @@ targets:
     sources: [Sources/SquatCounterCore]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.ritmovis.core
+        PRODUCT_BUNDLE_IDENTIFIER: com.fabiofigueiredo.ritmovis.dev.core
         GENERATE_INFOPLIST_FILE: YES
   SquatCounterCoreTests:
     type: bundle.unit-test
@@ -55,5 +56,5 @@ targets:
       - target: SquatCounter
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.ritmovis.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.fabiofigueiredo.ritmovis.dev.uitests
         GENERATE_INFOPLIST_FILE: YES

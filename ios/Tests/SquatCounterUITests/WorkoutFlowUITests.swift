@@ -47,4 +47,17 @@ final class WorkoutFlowUITests: XCTestCase {
         start.tap()
         XCTAssertTrue(app.buttons["Parar treino"].waitForExistence(timeout: 10))
     }
+
+    func testPersonSelectionControlInImmersiveScreen() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--qa-synthetic-camera", "--qa-synthetic-targets"]
+        app.launch()
+        app.buttons["Iniciar treino"].tap()
+        let select = app.buttons["Selecionar pessoa no quadro"]
+        XCTAssertTrue(select.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Pessoa acompanhada"].exists)
+        select.tap()
+        XCTAssertTrue(app.buttons["Pessoa acompanhada"].waitForExistence(timeout: 5))
+        app.buttons["Parar treino"].tap()
+    }
 }

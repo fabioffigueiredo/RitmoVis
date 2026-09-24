@@ -50,6 +50,9 @@ private struct QACameraReport: Codable {
     let timing: CameraStartupTiming
     let metrics: BenchmarkMetrics
     let warning: String?
+    let captureRunning: Bool
+    let captureInterrupted: Bool
+    let captureEvents: [String]
 }
 #endif
 
@@ -84,6 +87,8 @@ struct SelectedVideo: Transferable {
 private struct TimedPose: Sendable {
     let pts: TimeInterval
     let frame: PoseFrame
+    let candidates: [PoseCandidate]
+    let tracking: TrackingDecision
     let count: Int
     let phase: String
     let event: RepEvent?
@@ -133,6 +138,8 @@ private final class CaptureSessionBox: @unchecked Sendable {
     @Published var repetitions = 0
     @Published var phaseText = "Aguardando pose"
     @Published var landmarks: [CGPoint] = []
+    @Published private(set) var targetCandidates: [PoseCandidate] = []
+    @Published private(set) var trackingDecision: TrackingDecision = .noSelection
     @Published var imageAspectRatio = 1.0
     @Published var model: PoseModel = .lite
     @Published var cameraChoice: CameraChoice = .back
@@ -180,6 +187,7 @@ private final class CaptureSessionBox: @unchecked Sendable {
         documentsURL: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     )
     private var captureObservers: [NSObjectProtocol] = []
+    private var captureEventLog: [String] = []
     private var captureRotationPolicy = CaptureRotationPolicy()
 
     override init() {
@@ -212,11 +220,18 @@ private final class CaptureSessionBox: @unchecked Sendable {
             startupTiming.start(at: ProcessInfo.processInfo.systemUptime)
             isStarting = true
             phaseText = "Interface de teste sem câmera"
+            if ProcessInfo.processInfo.arguments.contains("--qa-synthetic-targets") {
+                imageAspectRatio = 9.0 / 16.0
+                targetCandidates = [PoseCandidate(index: 0, centerX: 0.5, centerY: 0.5,
+                                                  width: 0.3, height: 0.6, confidence: 0.9)]
+                phaseText = "Toque na pessoa que será acompanhada — simulação de interface"
+            }
             return
         }
         #endif
         endSession()
         startupTiming.start(at: ProcessInfo.processInfo.systemUptime)
+        captureEventLog = []
         isStarting = true
         cameraWarning = nil
         startError = nil
@@ -296,6 +311,19 @@ private final class CaptureSessionBox: @unchecked Sendable {
     func markLiveScreenVisible() {
         guard isStarting || isCameraActive else { return }
         startupTiming.visualResponse(at: ProcessInfo.processInfo.systemUptime)
+    }
+
+    func selectPerson(_ candidate: PoseCandidate) {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--qa-synthetic-targets") && isStarting {
+            trackingDecision = .selected(index: candidate.index)
+            phaseText = "Pessoa acompanhada — simulação de interface"
+            return
+        }
+        #endif
+        guard isCameraActive else { return }
+        worker?.selectPerson(candidate)
+        phaseText = "Confirmando pessoa selecionada…"
     }
 
     func stop() {
@@ -413,6 +441,7 @@ private final class CaptureSessionBox: @unchecked Sendable {
             return TimedPose(pts: sample.relativeTime,
                              frame: PoseFrame(landmarks: points, confidence: 1,
                                               kneeAngle: nil, imageAspectRatio: sample.imageAspectRatio),
+                             candidates: [], tracking: .noSelection,
                              count: sample.count, phase: sample.phase,
                              event: nil, metrics: BenchmarkMetrics())
         }
@@ -480,6 +509,7 @@ private final class CaptureSessionBox: @unchecked Sendable {
     }
 
     private func handleCaptureNotification(event: Int, reasonRaw: Int?, errorMessage: String?) {
+        captureEventLog.append("\(event):\(reasonRaw.map(String.init) ?? "-"):\(errorMessage ?? "-")")
         switch event {
         case 0:
             let reason = reasonRaw.flatMap(AVCaptureSession.InterruptionReason.init(rawValue:))
@@ -510,7 +540,10 @@ private final class CaptureSessionBox: @unchecked Sendable {
         let report = QACameraReport(recordedAt: Date(), camera: cameraChoice.rawValue,
                                     model: (modelUsed ?? model).rawValue,
                                     timing: startupTiming, metrics: metrics,
-                                    warning: cameraWarning)
+                                    warning: cameraWarning,
+                                    captureRunning: captureSession.isRunning,
+                                    captureInterrupted: captureSession.isInterrupted,
+                                    captureEvents: captureEventLog)
         do {
             let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             try JSONEncoder().encode(report).write(
@@ -523,6 +556,7 @@ private final class CaptureSessionBox: @unchecked Sendable {
 
     private func resetResults() {
         repetitions = 0; events = []; landmarks = []; imageAspectRatio = 1
+        targetCandidates = []; trackingDecision = .noSelection
         metrics = BenchmarkMetrics(); processedFrames = 0; droppedFrames = 0
         startedAt = nil
         modelUsed = model
@@ -530,7 +564,7 @@ private final class CaptureSessionBox: @unchecked Sendable {
 
     private func prepareWorker(id: UUID, videoURL: URL?) throws {
         resetResults()
-        let newWorker = try InferenceWorker(model: model) { [weak self] result in
+        let newWorker = try InferenceWorker(model: model, requiresExplicitSelection: videoURL == nil) { [weak self] result in
             guard let self, self.token == id, videoURL == nil else { return }
             self.apply(result)
             if let event = result.event { self.events.append(event) }
@@ -582,6 +616,8 @@ private final class CaptureSessionBox: @unchecked Sendable {
             startupTiming.firstPose(at: ProcessInfo.processInfo.systemUptime)
         }
         landmarks = result.frame.landmarks.map { CGPoint(x: $0.x, y: $0.y) }
+        targetCandidates = result.candidates
+        trackingDecision = result.tracking
         imageAspectRatio = result.frame.imageAspectRatio
         repetitions = result.count
         phaseText = result.phase
@@ -674,6 +710,7 @@ private final class CaptureSessionBox: @unchecked Sendable {
             .filter { $0.pts >= firstPTS }
             .map { result in
                 TimedPose(pts: result.pts - firstPTS, frame: result.frame,
+                          candidates: [], tracking: result.tracking,
                           count: result.count, phase: result.phase,
                           event: result.event, metrics: result.metrics)
             }
@@ -790,6 +827,11 @@ private final class SampleBufferBox: @unchecked Sendable {
 private final class InferenceWorker: @unchecked Sendable {
     private let queue = DispatchQueue(label: "pose.inference", qos: .userInitiated)
     private let detector: PoseDetector
+    private let requiresExplicitSelection: Bool
+    private var tracker = TargetTracker()
+    private var lastCandidates: [PoseCandidate] = []
+    private var lastCandidatePTS: TimeInterval?
+    private var lastCandidateUptime: TimeInterval?
     private var counter = SquatCounter()
     private var processed = 0
     private var dropped = 0
@@ -808,9 +850,11 @@ private final class InferenceWorker: @unchecked Sendable {
     private let update: @MainActor (TimedPose) -> Void
     private let complete: @MainActor ([TimedPose], String?) -> Void
 
-    init(model: PoseModel, update: @escaping @MainActor (TimedPose) -> Void,
+    init(model: PoseModel, requiresExplicitSelection: Bool,
+         update: @escaping @MainActor (TimedPose) -> Void,
          complete: @escaping @MainActor ([TimedPose], String?) -> Void) throws {
         detector = try PoseDetector(model: model)
+        self.requiresExplicitSelection = requiresExplicitSelection
         self.update = update
         self.complete = complete
     }
@@ -826,6 +870,22 @@ private final class InferenceWorker: @unchecked Sendable {
 
     func recordCaptureDrop() {
         lock.lock(); cameraDrops += 1; lock.unlock()
+    }
+
+    func selectPerson(_ displayed: PoseCandidate) {
+        queue.async { [weak self] in
+            guard let self, let pts = self.lastCandidatePTS,
+                  let uptime = self.lastCandidateUptime,
+                  ProcessInfo.processInfo.systemUptime - uptime < 1 else { return }
+            // Do not trust a frame-local MediaPipe array index after a new frame arrives.
+            let matches = self.lastCandidates.filter {
+                hypot($0.centerX - displayed.centerX, $0.centerY - displayed.centerY) <= 0.08 &&
+                abs($0.width - displayed.width) + abs($0.height - displayed.height) <= 0.15
+            }
+            guard matches.count == 1 else { return }
+            self.counter.interruptTracking(at: pts)
+            _ = self.tracker.select(matches[0], at: pts)
+        }
     }
 
     func enqueue(_ buffer: CMSampleBuffer) {
@@ -884,7 +944,26 @@ private final class InferenceWorker: @unchecked Sendable {
         let start = ContinuousClock.now
         do {
             let nearBlack = CMSampleBufferGetImageBuffer(buffer).map(Self.isNearBlack) ?? false
-            let frame = try detector.detect(buffer, timestamp: pts)
+            let batch = try detector.detect(buffer, timestamp: pts)
+            lastCandidates = batch.candidates
+            lastCandidatePTS = pts
+            lastCandidateUptime = ProcessInfo.processInfo.systemUptime
+            let decision: TrackingDecision
+            if requiresExplicitSelection {
+                decision = tracker.update(batch.candidates, at: pts)
+            } else if batch.candidates.count == 1, let only = batch.candidates.first {
+                decision = .selected(index: only.index)
+            } else {
+                decision = .noSelection
+            }
+            let selected: PoseFrame?
+            if case .selected(let index) = decision, batch.poses.indices.contains(index) {
+                selected = batch.poses[index]
+            } else {
+                selected = nil
+            }
+            let frame = selected ?? PoseFrame(landmarks: [], confidence: 0, kneeAngle: nil,
+                                              imageAspectRatio: batch.imageAspectRatio)
             let duration = start.duration(to: .now).components
             let latency = Double(duration.seconds) * 1_000 + Double(duration.attoseconds) / 1e15
             latencySum += latency
@@ -897,9 +976,26 @@ private final class InferenceWorker: @unchecked Sendable {
             processed += 1
             frameHealth.observe(isNearBlack: nearBlack)
             if frame.kneeAngle == nil { noPose += 1 }
-            let event = counter.consume(.init(timestamp: pts, kneeAngle: frame.kneeAngle ?? 0, confidence: frame.confidence))
-            return TimedPose(pts: pts, frame: frame, count: counter.repetitions,
-                             phase: counter.phase.displayText, event: event, metrics: currentMetrics)
+            let event: RepEvent?
+            if case .selected = decision, let kneeAngle = frame.kneeAngle {
+                event = counter.consume(.init(timestamp: pts, kneeAngle: kneeAngle, confidence: frame.confidence))
+            } else {
+                counter.interruptTracking(at: pts)
+                event = nil
+            }
+            let phase: String
+            switch decision {
+            case .selected: phase = counter.phase.displayText
+            case .noSelection:
+                if batch.candidates.isEmpty { phase = "Aguardando pessoas no quadro" }
+                else if requiresExplicitSelection { phase = "Toque na pessoa que será acompanhada" }
+                else { phase = "Vídeo com várias pessoas — seleção indisponível nesta versão" }
+            case .uncertain: phase = "Identidade incerta — contagem pausada"
+            case .reselectionRequired: phase = "Pessoa perdida — toque para selecionar novamente"
+            }
+            return TimedPose(pts: pts, frame: frame, candidates: batch.candidates,
+                             tracking: decision, count: counter.repetitions,
+                             phase: phase, event: event, metrics: currentMetrics)
         } catch {
             dropped += 1
             return nil

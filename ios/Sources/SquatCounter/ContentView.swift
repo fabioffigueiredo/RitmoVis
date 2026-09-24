@@ -214,8 +214,15 @@ struct ContentView: View {
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--qa-clip-full") { session.model = .full; session.testLicensedClip() }
         else if args.contains("--qa-clip-lite") { session.model = .lite; session.testLicensedClip() }
-        else if args.contains("--qa-front-camera") { session.cameraChoice = .front; session.startCamera() }
-        else if args.contains("--qa-camera") { session.startCamera() }
+        else if args.contains("--qa-front-camera") {
+            session.cameraChoice = .front
+            session.startCamera()
+            Task { try? await Task.sleep(for: .seconds(12)); session.stop() }
+        }
+        else if args.contains("--qa-camera") {
+            session.startCamera()
+            Task { try? await Task.sleep(for: .seconds(12)); session.stop() }
+        }
         else if args.contains("--qa-record-camera") {
             session.recordWorkout = true
             session.startCamera()
@@ -250,6 +257,11 @@ private struct LiveWorkoutScreen: View {
                               lockedRotationAngle: session.lockedPreviewAngle)
                     .ignoresSafeArea()
                 PoseOverlay(landmarks: session.landmarks, imageAspectRatio: session.imageAspectRatio)
+                    .ignoresSafeArea()
+                TargetSelectionOverlay(candidates: session.targetCandidates,
+                                       imageAspectRatio: session.imageAspectRatio,
+                                       tracking: session.trackingDecision,
+                                       select: session.selectPerson)
                     .ignoresSafeArea()
                 VStack(spacing: 16) {
                     HStack(alignment: .top, spacing: 12) {
@@ -310,6 +322,39 @@ private struct LiveWorkoutScreen: View {
         .padding(.vertical, 10)
         .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 16))
         .accessibilityElement(children: .combine)
+    }
+}
+
+private struct TargetSelectionOverlay: View {
+    let candidates: [PoseCandidate]
+    let imageAspectRatio: Double
+    let tracking: TrackingDecision
+    let select: (PoseCandidate) -> Void
+
+    var body: some View {
+        GeometryReader { geometry in
+            let frameAspect = geometry.size.width / max(geometry.size.height, 1)
+            let imageAspect = CGFloat(imageAspectRatio)
+            let imageWidth = frameAspect > imageAspect ? geometry.size.height * imageAspect : geometry.size.width
+            let imageHeight = frameAspect > imageAspect ? geometry.size.height : geometry.size.width / max(imageAspect, 0.01)
+            let offsetX = (geometry.size.width - imageWidth) / 2
+            let offsetY = (geometry.size.height - imageHeight) / 2
+            ForEach(candidates, id: \.index) { candidate in
+                let selected = tracking == .selected(index: candidate.index)
+                Button { select(candidate) } label: {
+                    Text(selected ? "✓" : "Selecionar")
+                        .font(.caption.weight(.bold))
+                        .padding(.horizontal, 12)
+                        .frame(minWidth: 58, minHeight: 52)
+                        .background(selected ? Color.green.opacity(0.9) : Color.orange.opacity(0.95),
+                                    in: Capsule())
+                        .foregroundStyle(.black)
+                }
+                .accessibilityLabel(selected ? "Pessoa acompanhada" : "Selecionar pessoa no quadro")
+                .position(x: offsetX + CGFloat(candidate.centerX) * imageWidth,
+                          y: offsetY + CGFloat(candidate.centerY) * imageHeight)
+            }
+        }
     }
 }
 
