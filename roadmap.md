@@ -4,6 +4,8 @@
 
 ## M0 — consolidar o agachamento de uma pessoa
 
+**Progresso:** avaliador de eventos, fixture sintético, quatro testes e protocolo de anotação implementados em 23/09/2026. Coleta real, ensaio sustentado e gate de aceitação ainda pendentes.
+
 **Implementar:** estabilizar a câmera no aparelho físico, confirmar rotação/replay e tratar recursos ausentes. Separar métricas de tempo até primeiro quadro, inferência, FPS processado, perdas, latência p95, temperatura e bateria por câmera e modelo Lite/Full.
 
 **Dados e teste:** anotar manualmente pelo menos 50 ciclos em gravações autorizadas de pessoas/ângulos/iluminação variados, com início/fim de cada repetição e tentativas incompletas. Executar 10 minutos contínuos de câmera ao vivo. Testar frente/trás, retrato/paisagem, entrada/saída do quadro, oclusão, pausa, interrupção e gravação ligada/desligada. Reportar TP/FP/FN, duplicações e instante do +1, não só o total.

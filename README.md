@@ -9,6 +9,7 @@ Este repositório extrai o código dos protótipos `squat-counter-ios` e `squat-
 - `ios/`: app SwiftUI, núcleo de contagem, testes e configuração XcodeGen/CocoaPods.
 - `video/`: código das peças editoriais Remotion em 16:9 e 4:5. Não inclui vídeos, gravações de aparelho ou imagens derivadas. As composições não renderizam sem os arquivos descritos em [assets](docs/assets-and-licenses.md).
 - `docs/`: arquitetura, status de QA e proveniência.
+- `ios/Fixtures/`: exemplo **sintético** do formato de anotação para avaliar repetições; nenhum dado pessoal.
 
 ## Preparar o app
 
@@ -33,6 +34,17 @@ swift test
 ```
 
 Para aparelho físico, defina sua equipe e um bundle identifier único nas configurações do projeto gerado ou em `project.yml` antes de gerar novamente. O identificador `com.example.ritmovis` é apenas um placeholder. A câmera não é validável no simulador.
+
+## Começar a validação M0
+
+O núcleo inclui agora um avaliador de repetições anotadas manualmente. Ele reporta TP/FP/FN, eventos duplicados ou perdidos e falsos positivos durante tentativas incompletas; o exemplo é sintético e **não** constitui resultado de desempenho do app:
+
+```sh
+cd ios
+swift run ritmovis-eval Fixtures/evaluation-synthetic.example.json
+```
+
+Antes de usar gravações reais, siga o [protocolo de anotação](docs/m0-annotation-protocol.md). A coleta de 50 repetições e o ensaio de 10 minutos no iPhone continuam pendentes.
 
 ## Preparar o vídeo editorial
 

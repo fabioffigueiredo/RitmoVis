@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "clipID": "synthetic-example-not-a-real-test",
+  "toleranceSeconds": 0.25,
+  "annotations": [
+    { "startSeconds": 0.0, "endSeconds": 1.0, "completed": true },
+    { "startSeconds": 2.0, "endSeconds": 3.0, "completed": false },
+    { "startSeconds": 4.0, "endSeconds": 5.0, "completed": true }
+  ],
+  "detectedAtSeconds": [1.1, 2.5, 5.1]
+}
