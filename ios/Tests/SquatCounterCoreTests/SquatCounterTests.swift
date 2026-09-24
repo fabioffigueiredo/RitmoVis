@@ -57,4 +57,25 @@ final class SquatCounterTests: XCTestCase {
         _ = counter.consume(.init(timestamp: 0.4, kneeAngle: 165, confidence: 0.1))
         XCTAssertEqual(counter.repetitions, 0)
     }
+
+    func testIdentityInterruptionDiscardsPartialCycleAndPreservesCompletedReps() {
+        var counter = SquatCounter(); counter.minimumPhaseDuration = 0
+        for (time, angle) in [(0.0, 170.0), (0.1, 145), (0.2, 100), (0.3, 120), (0.4, 165),
+                              (0.5, 145), (0.6, 100)] {
+            _ = counter.consume(.init(timestamp: time, kneeAngle: angle, confidence: 0.9))
+        }
+        XCTAssertEqual(counter.repetitions, 1)
+        XCTAssertEqual(counter.phase, .bottom)
+
+        counter.interruptTracking(at: 0.65)
+        XCTAssertEqual(counter.phase, .trackingLost)
+        _ = counter.consume(.init(timestamp: 0.7, kneeAngle: 120, confidence: 0.9))
+        _ = counter.consume(.init(timestamp: 0.8, kneeAngle: 165, confidence: 0.9))
+        XCTAssertEqual(counter.repetitions, 1)
+
+        for (time, angle) in [(0.9, 145.0), (1.0, 100), (1.1, 120), (1.2, 165)] {
+            _ = counter.consume(.init(timestamp: time, kneeAngle: angle, confidence: 0.9))
+        }
+        XCTAssertEqual(counter.repetitions, 2)
+    }
 }

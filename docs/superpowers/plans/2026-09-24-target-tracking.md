@@ -57,11 +57,11 @@
 
 **Interfaces:** Produces `SquatCounter.interruptTracking(at:)` so the app can discard a partial cycle without resetting completed counts; Task 4 consumes it.
 
-- [ ] Write a test where descent belongs to one person, identity is interrupted, and another person's ascent cannot produce `+1`; prior completed count remains.
-- [ ] Run targeted test; expect failure for missing interrupt API.
-- [ ] Implement interruption and require a fresh standing observation before another cycle.
-- [ ] Run targeted and full Swift tests; expect all green.
-- [ ] Commit code and test.
+- [x] Write a test where descent belongs to one person, identity is interrupted, and another person's ascent cannot produce `+1`; prior completed count remains.
+- [x] Run targeted test; observed failure for missing interrupt API.
+- [x] Implement interruption and require a fresh standing observation before another cycle.
+- [x] Run targeted and full Swift tests; 30 tests green.
+- [x] Commit code and test.
 
 ### Task 4: iOS multi-pose adapter and explicit selection
 

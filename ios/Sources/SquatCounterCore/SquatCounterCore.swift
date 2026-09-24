@@ -60,6 +60,16 @@ public struct SquatCounter: Sendable {
         return nil
     }
 
+    /// Invalidates an in-progress repetition when the selected person's identity is uncertain.
+    /// Completed repetitions remain, but a fresh standing observation is required to resume.
+    public mutating func interruptTracking(at timestamp: TimeInterval) {
+        guard timestamp.isFinite else { return }
+        if let lastValidTimestamp, timestamp < lastValidTimestamp { return }
+        lastValidTimestamp = timestamp
+        bottomConfidence = 0
+        transition(to: .trackingLost, at: timestamp)
+    }
+
     public mutating func reset() { self = SquatCounter() }
     private mutating func transition(to newPhase: SquatPhase, at timestamp: TimeInterval) { phase = newPhase; phaseSince = timestamp }
 }
