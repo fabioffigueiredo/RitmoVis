@@ -38,4 +38,4 @@
 
 - [x] Render an honest private video from actual test media and trace with explicit simulator/annotation limitations.
 - [x] Update roadmap, `CLAUDE.md`, model/weight and license decisions, privacy/sharing limits.
-- [ ] Verify no private media is tracked; request one final whole-branch review with GPT-6 Astra and address important findings.
+- [x] Verify no private media is tracked; request one final whole-branch review with GPT-6 Astra and address important findings.
