@@ -4,7 +4,15 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { frameOverlaySvg, writeOverlayPng } from './render-qa-video.mjs';
+import { frameOverlaySvg, validateFrameTimeline, writeOverlayPng } from './render-qa-video.mjs';
+
+test('rejects VFR or offset traces before an overlay can mislabel a person', () => {
+  const trace = [0, 1 / 30, 2 / 30].map(pts => ({ pts }));
+  assert.doesNotThrow(() => validateFrameTimeline(trace, [0, 1 / 30, 2 / 30], 30));
+  assert.throws(() => validateFrameTimeline(trace, [0, 0.04, 2 / 30], 30), /non-uniform/);
+  assert.throws(() => validateFrameTimeline(trace, [0.1, 0.1 + 1 / 30, 0.1 + 2 / 30], 30), /offset/);
+  assert.throws(() => validateFrameTimeline(trace, [0, 1 / 30], 30), /count/);
+});
 
 test('selected box and count come from the diagnostic trace, not a simulated UI', () => {
   const svg = frameOverlaySvg({

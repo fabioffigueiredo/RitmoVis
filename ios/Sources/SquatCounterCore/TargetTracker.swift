@@ -21,6 +21,31 @@ public struct PoseCandidate: Equatable, Sendable, Codable {
         self.confidence = confidence
         self.appearance = appearance
     }
+
+    // QA reports encode frame candidates. Never persist the session-only color signature.
+    private enum CodingKeys: String, CodingKey {
+        case index, centerX, centerY, width, height, confidence
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(index: try container.decode(Int.self, forKey: .index),
+                  centerX: try container.decode(Double.self, forKey: .centerX),
+                  centerY: try container.decode(Double.self, forKey: .centerY),
+                  width: try container.decode(Double.self, forKey: .width),
+                  height: try container.decode(Double.self, forKey: .height),
+                  confidence: try container.decode(Double.self, forKey: .confidence))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(index, forKey: .index)
+        try container.encode(centerX, forKey: .centerX)
+        try container.encode(centerY, forKey: .centerY)
+        try container.encode(width, forKey: .width)
+        try container.encode(height, forKey: .height)
+        try container.encode(confidence, forKey: .confidence)
+    }
 }
 
 public enum TrackingDecision: Equatable, Sendable {
@@ -37,6 +62,7 @@ public struct TargetTracker: Sendable {
     private var lastConfirmedAt: TimeInterval?
     private var requiresReselection = false
     private var referenceAppearance: [Double]?
+    private var appearanceConflictObserved = false
     private var pendingRecovery: PoseCandidate?
     private var pendingRecoveryAt: TimeInterval?
 
@@ -48,6 +74,7 @@ public struct TargetTracker: Sendable {
         lastConfirmedAt = time
         requiresReselection = false
         referenceAppearance = validAppearance(candidate.appearance)
+        appearanceConflictObserved = false
         pendingRecovery = nil
         pendingRecoveryAt = nil
         return .selected(index: candidate.index)
@@ -65,6 +92,15 @@ public struct TargetTracker: Sendable {
         }
         if age > 0.45 && referenceAppearance == nil { return .uncertain }
 
+        let appearanceConflict = appearanceConflictObserved || candidates.contains { candidate in
+            guard isValid(candidate), let referenceAppearance,
+                  let current = validAppearance(candidate.appearance) else { return false }
+            let distance = hypot(candidate.centerX - anchor.centerX, candidate.centerY - anchor.centerY)
+            let sizeChange = abs(candidate.width - anchor.width) + abs(candidate.height - anchor.height)
+            return distance <= (age > 0.45 ? 0.28 : 0.22) && sizeChange <= 0.24 &&
+                appearanceDistance(referenceAppearance, current) > 0.25
+        }
+        appearanceConflictObserved = appearanceConflict
         let ranked = candidates.compactMap { candidate -> (candidate: PoseCandidate, score: Double)? in
             guard isValid(candidate) else { return nil }
             let distance = hypot(candidate.centerX - anchor.centerX, candidate.centerY - anchor.centerY)
@@ -73,7 +109,7 @@ public struct TargetTracker: Sendable {
             if let referenceAppearance {
                 guard let current = validAppearance(candidate.appearance) else {
                     // A missing signature cannot justify a long-gap reacquisition.
-                    guard age <= 0.45 else { return nil }
+                    guard age <= 0.45, !appearanceConflict else { return nil }
                     return (candidate, distance + 0.2 * sizeChange + 0.15)
                 }
                 let difference = appearanceDistance(referenceAppearance, current)
@@ -93,7 +129,6 @@ public struct TargetTracker: Sendable {
         }
         if age > 0.45 {
             guard let pendingRecovery, let pendingRecoveryAt,
-                  time - pendingRecoveryAt >= 0.05,
                   time - pendingRecoveryAt <= 0.3,
                   hypot(best.candidate.centerX - pendingRecovery.centerX,
                         best.candidate.centerY - pendingRecovery.centerY) <= 0.08 else {
@@ -101,11 +136,14 @@ public struct TargetTracker: Sendable {
                 self.pendingRecoveryAt = time
                 return .uncertain
             }
+            // Do not reset the confirmation timer on every 30/60 fps frame.
+            guard time - pendingRecoveryAt >= 0.05 else { return .uncertain }
         }
         self.anchor = best.candidate
         self.lastConfirmedAt = time
         pendingRecovery = nil
         pendingRecoveryAt = nil
+        appearanceConflictObserved = false
         if let current = validAppearance(best.candidate.appearance) {
             if let referenceAppearance {
                 self.referenceAppearance = zip(referenceAppearance, current).map { 0.85 * $0 + 0.15 * $1 }
@@ -130,6 +168,7 @@ public struct TargetTracker: Sendable {
         lastConfirmedAt = nil
         requiresReselection = true
         referenceAppearance = nil
+        appearanceConflictObserved = false
         pendingRecovery = nil
         pendingRecoveryAt = nil
     }

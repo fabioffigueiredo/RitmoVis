@@ -64,8 +64,31 @@ function inspectVideo(source) {
   { encoding: 'utf8' });
   const stream = JSON.parse(raw).streams?.[0];
   if (!stream) throw new Error('Video has no image stream');
+  const frameTimes = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0',
+    '-show_entries', 'frame=best_effort_timestamp_time', '-of', 'csv=p=0', source],
+  { encoding: 'utf8' }).split(/\r?\n/).filter(Boolean).map(Number.parseFloat);
   return { width: stream.width, height: stream.height, fps: stream.r_frame_rate,
-    frameCount: Number(stream.nb_read_frames) };
+    frameCount: Number(stream.nb_read_frames), frameTimes };
+}
+
+export function validateFrameTimeline(trace, sourceTimes, fps) {
+  if (trace.length !== sourceTimes.length) throw new Error('Frame count mismatch');
+  if (!Number.isFinite(fps) || fps <= 0) throw new Error('Invalid frame rate');
+  const tolerance = 0.003;
+  if (Math.abs(sourceTimes[0]) > tolerance || Math.abs(trace[0]?.pts) > tolerance) {
+    throw new Error('Frame timeline offset is unsupported');
+  }
+  for (let index = 0; index < trace.length; index++) {
+    const expected = index / fps;
+    if (!Number.isFinite(sourceTimes[index]) ||
+        Math.abs(sourceTimes[index] - expected) > tolerance) {
+      throw new Error(`Source has non-uniform frame timing at ${index}`);
+    }
+    if (!Number.isFinite(trace[index].pts) ||
+        Math.abs(trace[index].pts - sourceTimes[index]) > tolerance) {
+      throw new Error(`Trace/source timestamp mismatch at ${index}`);
+    }
+  }
 }
 
 export function renderDiagnostic(reportPath, source, output) {
@@ -76,6 +99,8 @@ export function renderDiagnostic(reportPath, source, output) {
   if (report.trace.length !== video.frameCount) {
     throw new Error(`Frame trace mismatch: ${report.trace.length} vs ${video.frameCount}`);
   }
+  const [numerator, denominator] = video.fps.split('/').map(Number);
+  validateFrameTimeline(report.trace, video.frameTimes, numerator / denominator);
   const scratch = mkdtempSync(join(tmpdir(), 'ritmovis-qa-video-'));
   try {
     for (const [index, frame] of report.trace.entries()) {

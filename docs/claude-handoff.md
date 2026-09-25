@@ -5,7 +5,7 @@
 **Branch de trabalho:** `feat/m2-android-a0`
 **Objetivo imediato:** tornar a seleção de uma pessoa em vídeo de grupo mensurável e segura antes de ampliar exercícios, distribuir beta ou iniciar Android.
 
-**Nota de 25/09, incremento posterior:** seleção offline corrigida, rastreador com aparência cromática temporária e confirmação em dois quadros após lacuna; `docs/qa-single-target-2026-09-25.md` é o relatório mais recente. A suíte atual passou com **46 testes de núcleo + 5 UI no simulador**. O gate M2 segue reprovado sem anotações humanas. Vídeo privado de diagnóstico: `~/Library/Application Support/RitmoVis/qa-private/RitmoVis-M2-evidencia-privada-20260925.mp4`; contém pessoas reais, não publicar. O iPhone físico conectado teve o índice do Histórico lido sem remoção de dados e o clipe mais recente copiado para `qa-private/iphone-history-20260925-latest.mov`; os seis eventos registrados pelo app ainda não foram conferidos por humano. Não use esses dados para ajuste e depois como holdout.
+**Nota de 25/09, incremento posterior:** seleção offline corrigida, rastreador com aparência cromática temporária e confirmação em dois quadros após lacuna; a revisão Astra corrigiu a confirmação em 30/60 fps e impediu que um rival rejeitado voltasse sem assinatura. Cor temporária não é codificada no JSON de QA. `docs/qa-single-target-2026-09-25.md` é o relatório mais recente. A suíte atual passou com **49 testes de núcleo + 5 UI no simulador**. O gate M2 segue reprovado sem anotações humanas. Vídeo privado de diagnóstico: `~/Library/Application Support/RitmoVis/qa-private/RitmoVis-M2-evidencia-privada-20260925.mp4`; contém pessoas reais, não publicar. O iPhone físico conectado teve o índice do Histórico lido sem remoção de dados e o clipe mais recente copiado para `qa-private/iphone-history-20260925-latest.mov`; os seis eventos registrados pelo app ainda não foram conferidos por humano. Não use esses dados para ajuste e depois como holdout.
 
 ## Leitura mínima, nesta ordem
 
@@ -23,7 +23,7 @@
 | Uma pessoa | MediaPipe Lite/Full, máquina de estados de agachamento e avaliação de eventos | clipe local de QA contou 4 ciclos; não há corpus anotado suficiente para alegação de precisão |
 | Grupo / M2 | múltiplas poses, seleção explícita, `TargetTracker` com geometria + aparência temporária, abstenção e `OfflineTargetAnalyzer` | reensaio de cinco seleções privadas no simulador; cobertura melhorou em algumas e não em outras; ainda não há verdade humana de ID; M2 **não passou** |
 | Contrato iOS/Android | `fixtures/tracking-v1-synthetic.json` e teste Swift | sintético; Android ainda não foi criado/testado |
-| QA automatizado | 46 testes de núcleo + 5 UI | 51/51 no simulador em 25/09; Vision no simulador não retornou quadros úteis, então esse teste UI usa MediaPipe |
+| QA automatizado | 49 testes de núcleo + 5 UI | 54/54 no simulador em 25/09; Vision no simulador não retornou quadros úteis, então esse teste UI usa MediaPipe |
 
 ## O que não afirmar
 

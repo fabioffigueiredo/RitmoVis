@@ -97,4 +97,48 @@ final class TargetTrackerTests: XCTestCase {
         XCTAssertEqual(tracker.update([rival, recovered], at: 0.6), .uncertain)
         XCTAssertEqual(tracker.update([rival, recovered], at: 0.7), .selected(index: 2))
     }
+
+    func testStableAppearanceRecoveryConfirmsAtThirtyAndSixtyFps() {
+        for fps in [30.0, 60.0] {
+            var tracker = TargetTracker()
+            let target = PoseCandidate(index: 0, centerX: 0.3, centerY: 0.5, width: 0.3,
+                                       height: 0.5, confidence: 0.9,
+                                       appearance: Array(repeating: 0.2, count: 6))
+            _ = tracker.select(target, at: 0)
+            XCTAssertEqual(tracker.update([], at: 0.5), .uncertain)
+            var recovered = false
+            for step in 0..<12 {
+                let time = 0.6 + Double(step) / fps
+                let decision = tracker.update([target], at: time)
+                recovered = recovered || decision == .selected(index: 0)
+            }
+            XCTAssertTrue(recovered, "recovery failed at \(fps) fps")
+        }
+    }
+
+    func testRejectedRivalCannotReturnWithoutAppearanceSignature() {
+        var tracker = TargetTracker()
+        let target = PoseCandidate(index: 0, centerX: 0.3, centerY: 0.5, width: 0.3,
+                                   height: 0.5, confidence: 0.9,
+                                   appearance: Array(repeating: 0.2, count: 6))
+        let rival = PoseCandidate(index: 1, centerX: 0.3, centerY: 0.5, width: 0.3,
+                                  height: 0.5, confidence: 0.9,
+                                  appearance: Array(repeating: 0.8, count: 6))
+        let occludedRival = PoseCandidate(index: 1, centerX: 0.3, centerY: 0.5, width: 0.3,
+                                          height: 0.5, confidence: 0.9)
+        _ = tracker.select(target, at: 0)
+        XCTAssertEqual(tracker.update([rival], at: 0.1), .uncertain)
+        XCTAssertEqual(tracker.update([occludedRival], at: 0.2), .uncertain)
+        XCTAssertEqual(tracker.update([target], at: 0.3), .selected(index: 0))
+    }
+
+    func testTemporaryAppearanceIsNotSerializedInDiagnostics() throws {
+        let target = PoseCandidate(index: 0, centerX: 0.3, centerY: 0.5, width: 0.3,
+                                   height: 0.5, confidence: 0.9,
+                                   appearance: Array(repeating: 0.2, count: 6))
+        let data = try JSONEncoder().encode(target)
+        let json = try XCTUnwrap(String(data: data, encoding: .utf8))
+        XCTAssertFalse(json.contains("appearance"))
+        XCTAssertNil(try JSONDecoder().decode(PoseCandidate.self, from: data).appearance)
+    }
 }
