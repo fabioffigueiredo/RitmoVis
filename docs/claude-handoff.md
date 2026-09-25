@@ -5,6 +5,8 @@
 **Branch de trabalho:** `feat/m2-android-a0`
 **Objetivo imediato:** tornar a seleção de uma pessoa em vídeo de grupo mensurável e segura antes de ampliar exercícios, distribuir beta ou iniciar Android.
 
+**Nota de 25/09, incremento posterior:** seleção offline corrigida, rastreador com aparência cromática temporária e confirmação em dois quadros após lacuna; `docs/qa-single-target-2026-09-25.md` é o relatório mais recente. A suíte atual passou com **46 testes de núcleo + 5 UI no simulador**. O gate M2 segue reprovado sem anotações humanas. Vídeo privado de diagnóstico: `~/Library/Application Support/RitmoVis/qa-private/RitmoVis-M2-evidencia-privada-20260925.mp4`; contém pessoas reais, não publicar. O iPhone físico conectado teve o índice do Histórico lido sem remoção de dados e o clipe mais recente copiado para `qa-private/iphone-history-20260925-latest.mov`; os seis eventos registrados pelo app ainda não foram conferidos por humano. Não use esses dados para ajuste e depois como holdout.
+
 ## Leitura mínima, nesta ordem
 
 1. Este arquivo.
@@ -19,9 +21,9 @@
 |---|---|---|
 | iOS | SwiftUI, câmera frontal/traseira, tela de treino, gravação opcional, histórico, replay e importação Arquivos/Fotos | app de desenvolvimento instalado no **iPhone de fabio**; câmera com pareamento ainda é problema ambiental aberto |
 | Uma pessoa | MediaPipe Lite/Full, máquina de estados de agachamento e avaliação de eventos | clipe local de QA contou 4 ciclos; não há corpus anotado suficiente para alegação de precisão |
-| Grupo / M2 | múltiplas poses, seleção explícita, `TargetTracker`, abstenção e `OfflineTargetAnalyzer` | oito trechos pessoais em simulador confirmaram abstenção pré-seleção, mas seleção automática de QA cobriu pouco; M2 **não passou** |
+| Grupo / M2 | múltiplas poses, seleção explícita, `TargetTracker` com geometria + aparência temporária, abstenção e `OfflineTargetAnalyzer` | reensaio de cinco seleções privadas no simulador; cobertura melhorou em algumas e não em outras; ainda não há verdade humana de ID; M2 **não passou** |
 | Contrato iOS/Android | `fixtures/tracking-v1-synthetic.json` e teste Swift | sintético; Android ainda não foi criado/testado |
-| QA automatizado | 39 testes de núcleo + 5 UI | 44/44 no simulador em 24/09; Vision no simulador não retornou quadros úteis, então esse teste UI usa MediaPipe |
+| QA automatizado | 46 testes de núcleo + 5 UI | 51/51 no simulador em 25/09; Vision no simulador não retornou quadros úteis, então esse teste UI usa MediaPipe |
 
 ## O que não afirmar
 

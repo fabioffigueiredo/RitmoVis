@@ -1,0 +1,12 @@
+# Modelos para seleção de uma pessoa — decisão experimental
+
+**Revisado em 25/09/2026.** O produto não tem um “melhor modelo” estabelecido. A decisão vigente é medir qualidade de pose, identidade temporária, cobertura, latência e energia **nos mesmos clipes anotados e nos aparelhos reais** antes de substituir o baseline. Pesos e mídia permanecem fora do Git.
+
+| Candidato | Papel plausível | Estado / limite |
+|---|---|---|
+| MediaPipe Pose Landmarker Lite/Full | Baseline iOS atual; futuro baseline Android | O [guia oficial](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker) descreve até `num_poses` e 33 landmarks. Lite/Full já rodam no iOS; a comparação atual no simulador não tem verdade humana de ID. Medir no aparelho antes de mudar padrão. |
+| Apple Vision body pose | Alternativa **somente iOS** para importação de grupo | Experimento físico anterior cobriu parte de um clipe; o simulador falhou em inicializar para comparação útil. Não resolve paridade Android nem identidade automaticamente. [API Apple](https://developer.apple.com/documentation/vision/detecthumanbodyposerequest). |
+| RTMPose/MMPose + runtime móvel | Desafiante potencial para detecção/landmarks | [Guia de implantação oficial](https://github.com/open-mmlab/mmpose/blob/main/docs/en/user_guides/how_to_deploy.md). Avaliar conversão Core ML/Android, pesos exatos, licença, memória e energia somente se baseline falhar no holdout. Não instalado. |
+| OSNet/Torchreid ou outro embedding de aparência | Desafiante para associação **intra-sessão** depois de evidência de falha do rastreador simples | [Projeto original](https://github.com/KaiyangZhou/deep-person-reid). Revisar direitos dos pesos/dados separadamente do código, risco de privacidade, desempenho e erro com roupas iguais. Não implementado; não criar identidade persistente ou biometria nominal por padrão. |
+
+O resumo cromático atual é uma **heurística sem treino**: seis médias RGB da região do tronco no próprio quadro. Pode falhar com camiseta igual, sombras ou fundo preto. Não converte quatro vídeos em dataset de treino nem garante permanência no alvo. O roteiro de captura separa 12 clipes de ajuste e 8 de aceitação por sessão; somente o conjunto independente decide se melhora é real. O futuro Android deve usar os mesmos estados e fixtures, mas poderá ter erros de inferência diferentes; nenhum teste físico Android foi feito.
