@@ -33,6 +33,7 @@ final class WorkoutFlowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Analisar vídeo recebido"].exists)
         XCTAssertTrue(app.buttons["Arquivos"].exists)
         XCTAssertTrue(app.buttons["Fotos"].exists)
+        XCTAssertTrue(app.switches["Análise quadro a quadro para grupos"].exists)
         app.tabBars.buttons["Histórico"].tap()
         XCTAssertTrue(app.navigationBars["Histórico"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Treino"].tap()

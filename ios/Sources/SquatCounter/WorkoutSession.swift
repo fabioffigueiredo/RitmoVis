@@ -174,6 +174,7 @@ private final class CaptureSessionBox: @unchecked Sendable {
     @Published var imageAspectRatio = 1.0
     @Published var model: PoseModel = .lite
     @Published var useVisionForVideo = false
+    @Published var analyzeGroupFramesIndependently = false
     @Published var calibrateSelectedStandingFrame = false
     @Published private(set) var videoBackendUsed = "MediaPipe"
     private var videoCalibrationUsed = "default-155-105"
@@ -812,7 +813,8 @@ private final class CaptureSessionBox: @unchecked Sendable {
         let args = ProcessInfo.processInfo.arguments
         let vision = videoURL != nil && (useVisionForVideo || args.contains("--qa-apple-vision"))
         let hybrid = videoURL != nil && args.contains("--qa-hybrid")
-        let independent = videoURL != nil && args.contains("--qa-independent-frames")
+        let independent = videoURL != nil && !vision &&
+            (analyzeGroupFramesIndependently || args.contains("--qa-independent-frames"))
         videoBackendUsed = hybrid ? "Vision + MediaPipe \(model.rawValue) cropped"
             : vision ? "Apple Vision VNDetectHumanBodyPoseRequest"
             : "MediaPipe \(model.rawValue) \(independent ? "image" : "video")"

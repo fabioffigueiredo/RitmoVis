@@ -5,12 +5,14 @@
 **Branch de trabalho:** `feat/m2-android-a0`
 **Objetivo imediato:** tornar a seleção de uma pessoa em vídeo de grupo mensurável e segura antes de ampliar exercícios, distribuir beta ou iniciar Android.
 
+**Novo ensaio do Histórico em 25/09:** [sete vídeos gravados hoje, causa reproduzida e limite da correção](qa-iphone-history-noise-2026-09-25.md). O rastreador agora rejeita saltos espaciais incompatíveis com o intervalo entre quadros; o app oferece análise quadro a quadro para vídeos de grupo como opção, pois ela ajudou um clipe de duas pessoas mas piorou a continuidade em outro. Suíte atual: **50 testes de núcleo + 5 UI aprovados**. O app atualizado foi instalado e iniciado no iPhone físico; o índice do Histórico permaneceu idêntico. M2 segue **não validado**. Vídeos e relatórios detalhados ficam privados, fora do Git.
+
 **Nota de 25/09, incremento posterior:** seleção offline corrigida, rastreador com aparência cromática temporária e confirmação em dois quadros após lacuna; a revisão Astra corrigiu a confirmação em 30/60 fps e impediu que um rival rejeitado voltasse sem assinatura. Cor temporária não é codificada no JSON de QA. `docs/qa-single-target-2026-09-25.md` é o relatório mais recente. A suíte atual passou com **49 testes de núcleo + 5 UI no simulador**. O gate M2 segue reprovado sem anotações humanas. Vídeo privado de diagnóstico: `~/Library/Application Support/RitmoVis/qa-private/RitmoVis-M2-evidencia-privada-20260925.mp4`; contém pessoas reais, não publicar. O iPhone físico conectado teve o índice do Histórico lido sem remoção de dados e o clipe mais recente copiado para `qa-private/iphone-history-20260925-latest.mov`; os seis eventos registrados pelo app ainda não foram conferidos por humano. Não use esses dados para ajuste e depois como holdout.
 
 ## Leitura mínima, nesta ordem
 
 1. Este arquivo.
-2. [Corpus pessoal e QA de 25/09](qa-private-videos-2026-09-25.md), depois [QA de seleção de grupo de 24/09](qa-group-selection-2026-09-24.md).
+2. [Histórico do iPhone e ruído](qa-iphone-history-noise-2026-09-25.md), [corpus pessoal e QA de 25/09](qa-private-videos-2026-09-25.md), depois [QA de seleção de grupo de 24/09](qa-group-selection-2026-09-24.md).
 3. [Roadmap](../roadmap.md) — gates e ordem dos marcos.
 4. [Protocolo M0](m0-annotation-protocol.md) e [fluxo de vídeos](video-qa-workflow.md) — como obter evidência real.
 5. [Decisões](decisions.md) e [arquitetura](architecture.md) — antes de alterar detector, privacidade ou contrato entre plataformas.

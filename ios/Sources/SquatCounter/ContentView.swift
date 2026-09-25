@@ -259,7 +259,9 @@ struct ContentView: View {
             .disabled(session.isAnalyzing || session.isCameraActive)
             Toggle("Apple Vision para vídeos com grupo (experimental)", isOn: $session.useVisionForVideo)
                 .disabled(session.isAnalyzing || session.isCameraActive)
-            Text("Vale para o próximo vídeo importado. A câmera ao vivo continua com MediaPipe Lite/Full.")
+            Toggle("Análise quadro a quadro para grupos", isOn: $session.analyzeGroupFramesIndependently)
+                .disabled(session.isAnalyzing || session.isCameraActive)
+            Text("Para vídeos com várias pessoas, o modo quadro a quadro detecta cada imagem sem depender do quadro anterior. Pode ser mais lento; não garante manter a identidade. Apple Vision tem prioridade se os dois modos estiverem ativos. A câmera ao vivo continua com MediaPipe Lite/Full.")
                 .font(.caption).foregroundStyle(.secondary)
             #if DEBUG
             if Bundle.main.url(forResource: "pexels-8837118-1280w", withExtension: "mp4") != nil {

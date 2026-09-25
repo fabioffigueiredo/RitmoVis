@@ -4,6 +4,8 @@
 
 **Incremento de 25/09:** o rastreador de alvo ganhou evidência cromática temporária, recuperação conservadora e diagnósticos por categoria; a seleção offline não reaproveita o quadro anterior ao pedir novo alvo. O [reensaio](docs/qa-single-target-2026-09-25.md) melhorou a continuidade de alguns trechos e deixou outros praticamente iguais, mas **não comprova identidade nem contagem correta**. O próximo gate é coletar/rotular o [roteiro de 20 clipes](docs/recording-protocol-single-target.md), separar ajuste e holdout por sessão e medir contagens atribuídas à pessoa errada e cobertura; 50 ciclos são piso de coleta, não prova de generalização. Um novo vídeo do Histórico de 25/09 foi preservado como possível caso de regressão, sem rótulo humano.
 
+**Revisão adicional do Histórico:** os sete vídeos gravados em 25/09 foram inspecionados e preservados em cópias privadas. Um teste revelou salto de associação entre atletas em 33 ms; o rastreador passou a limitar deslocamento pelo intervalo entre quadros. Análise independente por quadro melhora a detecção de candidatos em um clipe de grupo, mas perde continuidade em um clipe individual, por isso é opção explícita e não novo padrão. [Métricas e limitações](docs/qa-iphone-history-noise-2026-09-25.md). M2 e beta permanecem pendentes.
+
 ## M0 — consolidar o agachamento de uma pessoa
 
 **Progresso:** avaliador de eventos, fixture sintético, quatro testes e protocolo de anotação implementados em 23/09/2026. Coleta real, ensaio sustentado e gate de aceitação ainda pendentes.

@@ -41,6 +41,20 @@ final class TargetTrackerTests: XCTestCase {
         XCTAssertEqual(tracker.update([person(1, x: 0.8)], at: 0.1), .uncertain)
     }
 
+    func testOneFrameTeleportToOtherAthleteIsNotCredited() {
+        var tracker = TargetTracker()
+        let blackShirt = Array(repeating: 0.12, count: 6)
+        func athlete(_ index: Int, x: Double) -> PoseCandidate {
+            PoseCandidate(index: index, centerX: x, centerY: 0.5, width: 0.27,
+                          height: 0.40, confidence: 0.9, appearance: blackShirt)
+        }
+        _ = tracker.select(athlete(0, x: 0.67), at: 0)
+        XCTAssertEqual(tracker.update([athlete(1, x: 0.62)], at: 1.0 / 30), .selected(index: 1))
+        XCTAssertEqual(tracker.update([athlete(0, x: 0.58)], at: 2.0 / 30), .selected(index: 0))
+        XCTAssertEqual(tracker.update([athlete(0, x: 0.36)], at: 3.0 / 30), .uncertain)
+        XCTAssertEqual(tracker.update([athlete(1, x: 0.61)], at: 4.0 / 30), .selected(index: 1))
+    }
+
     func testAmbiguousCrossingInvalidatesPartialRepetition() {
         var tracker = TargetTracker()
         var counter = SquatCounter()

@@ -91,13 +91,16 @@ public struct TargetTracker: Sendable {
             return .reselectionRequired
         }
         if age > 0.45 && referenceAppearance == nil { return .uncertain }
+        // A single video frame cannot move a body across another athlete. Expand the
+        // spatial gate only as time since the last confirmed observation increases.
+        let motionLimit = min(age > 0.45 ? 0.28 : 0.22, max(0.08, 1.2 * age))
 
         let appearanceConflict = appearanceConflictObserved || candidates.contains { candidate in
             guard isValid(candidate), let referenceAppearance,
                   let current = validAppearance(candidate.appearance) else { return false }
             let distance = hypot(candidate.centerX - anchor.centerX, candidate.centerY - anchor.centerY)
             let sizeChange = abs(candidate.width - anchor.width) + abs(candidate.height - anchor.height)
-            return distance <= (age > 0.45 ? 0.28 : 0.22) && sizeChange <= 0.24 &&
+            return distance <= motionLimit && sizeChange <= 0.24 &&
                 appearanceDistance(referenceAppearance, current) > 0.25
         }
         appearanceConflictObserved = appearanceConflict
@@ -105,7 +108,7 @@ public struct TargetTracker: Sendable {
             guard isValid(candidate) else { return nil }
             let distance = hypot(candidate.centerX - anchor.centerX, candidate.centerY - anchor.centerY)
             let sizeChange = abs(candidate.width - anchor.width) + abs(candidate.height - anchor.height)
-            guard distance <= (age > 0.45 ? 0.28 : 0.22), sizeChange <= 0.24 else { return nil }
+            guard distance <= motionLimit, sizeChange <= 0.24 else { return nil }
             if let referenceAppearance {
                 guard let current = validAppearance(candidate.appearance) else {
                     // A missing signature cannot justify a long-gap reacquisition.
