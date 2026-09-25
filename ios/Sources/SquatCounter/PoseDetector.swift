@@ -87,11 +87,58 @@ final class PoseDetector {
                   let minX = visible.map(\.x).min(), let maxX = visible.map(\.x).max(),
                   let minY = visible.map(\.y).min(), let maxY = visible.map(\.y).max() else { continue }
             let confidence = visible.map { min($0.visibility, $0.presence) }.reduce(0, +) / Double(visible.count)
+            let appearance = pixelBuffer.flatMap { torsoAppearance($0, points: geometryPoints,
+                                                                     personWidth: maxX - minX) }
             candidates.append(PoseCandidate(index: index, centerX: (minX + maxX) / 2,
                                             centerY: (minY + maxY) / 2, width: maxX - minX,
-                                            height: maxY - minY, confidence: confidence))
+                                            height: maxY - minY, confidence: confidence,
+                                            appearance: appearance))
         }
         return PoseDetectionBatch(poses: frames, candidates: candidates, imageAspectRatio: aspectRatio)
+    }
+
+    /// Small in-memory color summary of two torso patches. Never persisted as a person ID.
+    /// If shoulders/hips or BGRA pixels are unavailable, the tracker uses geometry only.
+    private func torsoAppearance(_ buffer: CVPixelBuffer, points: [PosePoint],
+                                 personWidth: Double) -> [Double]? {
+        guard CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_32BGRA,
+              points.indices.contains(24) else { return nil }
+        let joints = [points[11], points[12], points[23], points[24]]
+        guard joints.allSatisfy({ min($0.visibility, $0.presence) >= 0.55 &&
+                                  $0.x.isFinite && $0.y.isFinite }) else { return nil }
+        let shoulderX = (joints[0].x + joints[1].x) / 2
+        let shoulderY = (joints[0].y + joints[1].y) / 2
+        let hipX = (joints[2].x + joints[3].x) / 2
+        let hipY = (joints[2].y + joints[3].y) / 2
+        guard hipY - shoulderY > 0.06,
+              CVPixelBufferLockBaseAddress(buffer, .readOnly) == kCVReturnSuccess else { return nil }
+        defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
+        guard let base = CVPixelBufferGetBaseAddress(buffer) else { return nil }
+        let bytes = base.assumingMemoryBound(to: UInt8.self)
+        let width = CVPixelBufferGetWidth(buffer), height = CVPixelBufferGetHeight(buffer)
+        let stride = CVPixelBufferGetBytesPerRow(buffer)
+        let radiusX = max(1, Int(Double(width) * min(0.025, personWidth * 0.07)))
+        let radiusY = max(1, Int(Double(height) * min(0.015, (hipY - shoulderY) * 0.12)))
+        var output: [Double] = []
+        for fraction in [0.34, 0.68] {
+            let centerX = Int((shoulderX + fraction * (hipX - shoulderX)) * Double(width))
+            let centerY = Int((shoulderY + fraction * (hipY - shoulderY)) * Double(height))
+            guard centerX - radiusX >= 0, centerX + radiusX < width,
+                  centerY - radiusY >= 0, centerY + radiusY < height else { return nil }
+            var rgb = [0.0, 0.0, 0.0]
+            var samples = 0.0
+            for dy in [-radiusY, 0, radiusY] {
+                for dx in [-radiusX, 0, radiusX] {
+                    let offset = (centerY + dy) * stride + (centerX + dx) * 4
+                    rgb[0] += Double(bytes[offset + 2])
+                    rgb[1] += Double(bytes[offset + 1])
+                    rgb[2] += Double(bytes[offset])
+                    samples += 1
+                }
+            }
+            output.append(contentsOf: rgb.map { $0 / (samples * 255) })
+        }
+        return output
     }
 
     private func refine(_ points: [PosePoint], pixelBuffer: CVPixelBuffer) throws -> [PosePoint] {

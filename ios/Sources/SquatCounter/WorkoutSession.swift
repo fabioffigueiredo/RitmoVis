@@ -417,6 +417,22 @@ private final class CaptureSessionBox: @unchecked Sendable {
         videoPlayer?.pause()
         calibrateSelectedStandingFrame = false
         isChoosingVideoPerson = true
+        // Playback may have stopped on an empty frame. Reposition within the cached
+        // analysis so "choose again" always offers an actual selectable person.
+        let current = currentVideoObservationPTS ?? videoPlayer?.currentTime().seconds ?? 0
+        if let selectable = rawImportedResults.filter({ !$0.candidates.isEmpty }).min(by: {
+            abs($0.pts - current) < abs($1.pts - current)
+        }) {
+            currentVideoObservationPTS = selectable.pts
+            apply(selectable)
+            trackingDecision = .noSelection
+            repetitions = 0
+            phaseText = "Toque na pessoa que será acompanhada"
+            videoPlayer?.seek(to: CMTime(seconds: selectable.pts, preferredTimescale: 600),
+                              toleranceBefore: .zero, toleranceAfter: .zero)
+        } else {
+            videoAnalysisNotice = "Nenhuma pessoa detectada neste vídeo. Tente outro enquadramento ou iluminação."
+        }
     }
 
     private nonisolated static func analyzeCachedPoses(_ cached: [TimedPose], selectedFrame: Int,
@@ -911,10 +927,11 @@ private final class CaptureSessionBox: @unchecked Sendable {
         }
         landmarks = result.frame.landmarks.map { CGPoint(x: $0.x, y: $0.y) }
         targetCandidates = result.candidates
-        trackingDecision = result.tracking
+        trackingDecision = isChoosingVideoPerson && importedVideoHasMultiplePeople ? .noSelection : result.tracking
         imageAspectRatio = result.frame.imageAspectRatio
-        repetitions = result.count
-        phaseText = result.phase
+        repetitions = isChoosingVideoPerson && importedVideoHasMultiplePeople ? 0 : result.count
+        phaseText = isChoosingVideoPerson && importedVideoHasMultiplePeople
+            ? "Toque na pessoa que será acompanhada" : result.phase
         if !isHistoricalReplay {
             metrics = result.metrics
             processedFrames = metrics.processedFrames

@@ -57,4 +57,44 @@ final class TargetTrackerTests: XCTestCase {
         _ = counter.consume(.init(timestamp: 0.5, kneeAngle: 165, confidence: 0.9))
         XCTAssertEqual(counter.repetitions, 0)
     }
+
+    func testAppearanceSeparatesCrossingAthletesWhenGeometryCannot() {
+        var tracker = TargetTracker()
+        let target = PoseCandidate(index: 0, centerX: 0.40, centerY: 0.5, width: 0.3,
+                                   height: 0.5, confidence: 0.9, appearance: [0.1, 0.1, 0.1, 0.2, 0.2, 0.2])
+        XCTAssertEqual(tracker.select(target, at: 0), .selected(index: 0))
+        let rival = PoseCandidate(index: 1, centerX: 0.41, centerY: 0.5, width: 0.3,
+                                  height: 0.5, confidence: 0.9, appearance: [0.8, 0.2, 0.2, 0.8, 0.2, 0.2])
+        let movedTarget = PoseCandidate(index: 2, centerX: 0.44, centerY: 0.5, width: 0.3,
+                                        height: 0.5, confidence: 0.9, appearance: [0.1, 0.1, 0.1, 0.2, 0.2, 0.2])
+        XCTAssertEqual(tracker.update([rival, movedTarget], at: 0.1), .selected(index: 2))
+    }
+
+    func testIdenticalAppearanceDoesNotJustifyRecoveryAfterCrossing() {
+        var tracker = TargetTracker()
+        let target = PoseCandidate(index: 0, centerX: 0.40, centerY: 0.5, width: 0.3,
+                                   height: 0.5, confidence: 0.9, appearance: Array(repeating: 0.1, count: 6))
+        _ = tracker.select(target, at: 0)
+        let a = PoseCandidate(index: 1, centerX: 0.43, centerY: 0.5, width: 0.3,
+                              height: 0.5, confidence: 0.9, appearance: Array(repeating: 0.1, count: 6))
+        let b = PoseCandidate(index: 2, centerX: 0.45, centerY: 0.5, width: 0.3,
+                              height: 0.5, confidence: 0.9, appearance: Array(repeating: 0.1, count: 6))
+        XCTAssertEqual(tracker.update([a, b], at: 0.1), .uncertain)
+        XCTAssertEqual(tracker.update([b], at: 0.2), .reselectionRequired)
+    }
+
+    func testAppearanceRecoversTargetAfterShortDetectionGapWithoutCreditingTheRival() {
+        var tracker = TargetTracker()
+        let target = PoseCandidate(index: 0, centerX: 0.3, centerY: 0.5, width: 0.3,
+                                   height: 0.5, confidence: 0.9, appearance: Array(repeating: 0.2, count: 6))
+        _ = tracker.select(target, at: 0)
+        XCTAssertEqual(tracker.update([], at: 0.3), .uncertain)
+        let rival = PoseCandidate(index: 1, centerX: 0.32, centerY: 0.5, width: 0.3,
+                                  height: 0.5, confidence: 0.9, appearance: Array(repeating: 0.8, count: 6))
+        XCTAssertEqual(tracker.update([rival], at: 0.5), .uncertain)
+        let recovered = PoseCandidate(index: 2, centerX: 0.36, centerY: 0.5, width: 0.3,
+                                      height: 0.5, confidence: 0.9, appearance: Array(repeating: 0.2, count: 6))
+        XCTAssertEqual(tracker.update([rival, recovered], at: 0.6), .uncertain)
+        XCTAssertEqual(tracker.update([rival, recovered], at: 0.7), .selected(index: 2))
+    }
 }

@@ -20,9 +20,9 @@
 
 **Interfaces:** `PoseCandidate`, `TargetTracker` and `TrackingDecision` consumed by live and imported-video paths.
 
-- [ ] Add failing tests for short detection gaps, ambiguous crossing, no unsafe substitution, and strong-evidence recovery.
-- [ ] Add session-local appearance evidence only where measurable; keep fallback conservative and clear after the session.
-- [ ] Run targeted and full `swift test` plus simulator build and UI tests where possible.
+- [x] Add failing tests for short detection gaps, ambiguous crossing, no unsafe substitution, and strong-evidence recovery.
+- [x] Add session-local appearance evidence only where measurable; keep fallback conservative and clear after the session.
+- [x] Run targeted and full `swift test` plus simulator build and UI tests where possible.
 
 ### Task 3: Existing private-corpus evaluation
 
