@@ -89,12 +89,28 @@ final class PoseDetector {
             let confidence = visible.map { min($0.visibility, $0.presence) }.reduce(0, +) / Double(visible.count)
             let appearance = pixelBuffer.flatMap { torsoAppearance($0, points: geometryPoints,
                                                                      personWidth: maxX - minX) }
+            let torso = torsoGeometry(geometryPoints)
             candidates.append(PoseCandidate(index: index, centerX: (minX + maxX) / 2,
                                             centerY: (minY + maxY) / 2, width: maxX - minX,
                                             height: maxY - minY, confidence: confidence,
-                                            appearance: appearance))
+                                            appearance: appearance, torsoX: torso?.x,
+                                            torsoY: torso?.y, torsoSize: torso?.size))
         }
         return PoseDetectionBatch(poses: frames, candidates: candidates, imageAspectRatio: aspectRatio)
+    }
+
+    private func torsoGeometry(_ points: [PosePoint]) -> (x: Double, y: Double, size: Double)? {
+        guard points.indices.contains(24) else { return nil }
+        let joints = [points[11], points[12], points[23], points[24]]
+        guard joints.allSatisfy({ min($0.visibility, $0.presence) >= 0.5 &&
+            $0.x.isFinite && $0.y.isFinite && (0...1).contains($0.x) && (0...1).contains($0.y) }) else { return nil }
+        let shoulderX = (joints[0].x + joints[1].x) / 2
+        let shoulderY = (joints[0].y + joints[1].y) / 2
+        let hipX = (joints[2].x + joints[3].x) / 2
+        let hipY = (joints[2].y + joints[3].y) / 2
+        let size = hypot(hipX - shoulderX, hipY - shoulderY)
+        guard size >= 0.04, size <= 0.5 else { return nil }
+        return ((shoulderX + hipX) / 2, (shoulderY + hipY) / 2, size)
     }
 
     /// Small in-memory color summary of two torso patches. Never persisted as a person ID.

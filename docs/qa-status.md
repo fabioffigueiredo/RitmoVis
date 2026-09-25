@@ -2,6 +2,8 @@
 
 ## Estado atual — 25/09/2026
 
+- **Vídeo de tela com pôster e perda do alvo:** [diagnóstico e reensaio físico de 25/09](qa-poster-and-target-2026-09-25.md). Filtro automático recusou a seleção do pôster observado; no clipe de turma a cobertura subiu de 21 para 428/866 quadros, mas 309 permanecem incertos. 54 testes de núcleo e 59 testes Xcode (incluindo 5 UI) passaram. A identidade correta ainda não foi anotada independentemente; **M2 continua não validado**.
+
 - **Novo ensaio do Histórico:** sete vídeos de hoje copiados para QA privado e inspecionados. Salto espacial entre atletas reproduzido em teste (vermelho), corrigido com limite por intervalo entre quadros e aprovado (verde). Suíte atual **50/50 núcleo, 55/55 Xcode no simulador**. A atualização foi instalada e iniciada no iPhone físico sem alterar o índice do Histórico. Modo quadro a quadro para grupos é opção, não padrão; [comparação e limites](qa-iphone-history-noise-2026-09-25.md). **M2 ainda não validado**: faltam anotação humana e ensaio físico da nova opção.
 
 - **Teste físico posterior:** o build `e35a10f` foi instalado no `iPhone de fabio` sem alterar o índice do Histórico. O clipe privado 7209 foi reanalisado no aparelho com MediaPipe Lite e Full; ambos produziram 1 evento automático, mas o alvo ficou selecionado em apenas 225/473 e 216/473 quadros, respectivamente. O teste **não valida M2**; ver [relatório físico detalhado](qa-physical-single-target-2026-09-25.md) e vídeo comparativo privado. O @Computador não conseguiu abrir o Device Hub para confirmar a interface visual (timeout); os resultados são do relatório exportado do aparelho.

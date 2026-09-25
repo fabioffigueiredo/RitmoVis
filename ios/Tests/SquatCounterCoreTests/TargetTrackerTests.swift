@@ -55,6 +55,36 @@ final class TargetTrackerTests: XCTestCase {
         XCTAssertEqual(tracker.update([athlete(1, x: 0.61)], at: 4.0 / 30), .selected(index: 1))
     }
 
+    func testSquatBBoxShrinkDoesNotLoseSameTorso() {
+        var tracker = TargetTracker()
+        let appearance = Array(repeating: 0.16, count: 6)
+        let standing = PoseCandidate(index: 0, centerX: 0.46, centerY: 0.74,
+                                     width: 0.17, height: 0.30, confidence: 0.85,
+                                     appearance: appearance, torsoX: 0.45, torsoY: 0.69,
+                                     torsoSize: 0.13)
+        let rising = PoseCandidate(index: 2, centerX: 0.41, centerY: 0.61,
+                                   width: 0.18, height: 0.58, confidence: 0.85,
+                                   appearance: appearance, torsoX: 0.43, torsoY: 0.51,
+                                   torsoSize: 0.13)
+        _ = tracker.select(standing, at: 0)
+        XCTAssertEqual(tracker.update([rising], at: 0.33), .selected(index: 2))
+    }
+
+    func testOverlappingBoxesDoNotOverrideDistantTorso() {
+        var tracker = TargetTracker()
+        let appearance = Array(repeating: 0.16, count: 6)
+        let target = PoseCandidate(index: 0, centerX: 0.50, centerY: 0.55,
+                                   width: 0.3, height: 0.5, confidence: 0.9,
+                                   appearance: appearance, torsoX: 0.35, torsoY: 0.5,
+                                   torsoSize: 0.13)
+        let rival = PoseCandidate(index: 1, centerX: 0.51, centerY: 0.55,
+                                  width: 0.3, height: 0.5, confidence: 0.9,
+                                  appearance: appearance, torsoX: 0.65, torsoY: 0.5,
+                                  torsoSize: 0.13)
+        _ = tracker.select(target, at: 0)
+        XCTAssertEqual(tracker.update([rival], at: 1.0 / 30), .uncertain)
+    }
+
     func testAmbiguousCrossingInvalidatesPartialRepetition() {
         var tracker = TargetTracker()
         var counter = SquatCounter()

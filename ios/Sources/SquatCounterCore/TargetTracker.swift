@@ -10,9 +10,14 @@ public struct PoseCandidate: Equatable, Sendable, Codable {
     public let confidence: Double
     /// Six normalized RGB means (upper and lower torso); session-local evidence, not an identity.
     public let appearance: [Double]?
+    /// Stable shoulder/hip geometry for association; not used as a nominal identity.
+    public let torsoX: Double?
+    public let torsoY: Double?
+    public let torsoSize: Double?
 
     public init(index: Int, centerX: Double, centerY: Double, width: Double, height: Double,
-                confidence: Double, appearance: [Double]? = nil) {
+                confidence: Double, appearance: [Double]? = nil,
+                torsoX: Double? = nil, torsoY: Double? = nil, torsoSize: Double? = nil) {
         self.index = index
         self.centerX = centerX
         self.centerY = centerY
@@ -20,6 +25,9 @@ public struct PoseCandidate: Equatable, Sendable, Codable {
         self.height = height
         self.confidence = confidence
         self.appearance = appearance
+        self.torsoX = torsoX
+        self.torsoY = torsoY
+        self.torsoSize = torsoSize
     }
 
     // QA reports encode frame candidates. Never persist the session-only color signature.
@@ -98,17 +106,17 @@ public struct TargetTracker: Sendable {
         let appearanceConflict = appearanceConflictObserved || candidates.contains { candidate in
             guard isValid(candidate), let referenceAppearance,
                   let current = validAppearance(candidate.appearance) else { return false }
-            let distance = hypot(candidate.centerX - anchor.centerX, candidate.centerY - anchor.centerY)
-            let sizeChange = abs(candidate.width - anchor.width) + abs(candidate.height - anchor.height)
-            return distance <= motionLimit && sizeChange <= 0.24 &&
+            let geometry = motionGeometry(from: anchor, to: candidate)
+            return geometry.distance <= motionLimit && geometry.sizeChange <= geometry.sizeLimit &&
                 appearanceDistance(referenceAppearance, current) > 0.25
         }
         appearanceConflictObserved = appearanceConflict
         let ranked = candidates.compactMap { candidate -> (candidate: PoseCandidate, score: Double)? in
             guard isValid(candidate) else { return nil }
-            let distance = hypot(candidate.centerX - anchor.centerX, candidate.centerY - anchor.centerY)
-            let sizeChange = abs(candidate.width - anchor.width) + abs(candidate.height - anchor.height)
-            guard distance <= motionLimit, sizeChange <= 0.24 else { return nil }
+            let geometry = motionGeometry(from: anchor, to: candidate)
+            let distance = geometry.distance
+            let sizeChange = geometry.sizeChange
+            guard distance <= motionLimit, sizeChange <= geometry.sizeLimit else { return nil }
             if let referenceAppearance {
                 guard let current = validAppearance(candidate.appearance) else {
                     // A missing signature cannot justify a long-gap reacquisition.
@@ -133,8 +141,7 @@ public struct TargetTracker: Sendable {
         if age > 0.45 {
             guard let pendingRecovery, let pendingRecoveryAt,
                   time - pendingRecoveryAt <= 0.3,
-                  hypot(best.candidate.centerX - pendingRecovery.centerX,
-                        best.candidate.centerY - pendingRecovery.centerY) <= 0.08 else {
+                  motionGeometry(from: pendingRecovery, to: best.candidate).distance <= 0.08 else {
                 self.pendingRecovery = best.candidate
                 self.pendingRecoveryAt = time
                 return .uncertain
@@ -164,6 +171,18 @@ public struct TargetTracker: Sendable {
         candidate.width.isFinite && candidate.width > 0 && candidate.width <= 1 &&
         candidate.height.isFinite && candidate.height > 0 && candidate.height <= 1 &&
         candidate.confidence.isFinite && candidate.confidence >= 0.5
+    }
+
+    private func motionGeometry(from anchor: PoseCandidate, to candidate: PoseCandidate)
+        -> (distance: Double, sizeChange: Double, sizeLimit: Double) {
+        if let ax = anchor.torsoX, let ay = anchor.torsoY, let asize = anchor.torsoSize,
+           let cx = candidate.torsoX, let cy = candidate.torsoY, let csize = candidate.torsoSize,
+           [ax, ay, cx, cy].allSatisfy({ $0.isFinite && (0...1).contains($0) }),
+           asize.isFinite, csize.isFinite, asize > 0, csize > 0 {
+            return (hypot(cx - ax, cy - ay), abs(csize - asize), 0.10)
+        }
+        return (hypot(candidate.centerX - anchor.centerX, candidate.centerY - anchor.centerY),
+                abs(candidate.width - anchor.width) + abs(candidate.height - anchor.height), 0.24)
     }
 
     private mutating func invalidateSelection() {

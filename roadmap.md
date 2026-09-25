@@ -26,6 +26,8 @@
 
 ## M2 — selecionar e manter **uma** pessoa numa cena com várias
 
+**Incremento de 25/09:** o filtro automático de seleção por pose de agachamento analisável recusou o pôster do vídeo recebido; geometria do tronco melhorou a continuidade de um alvo no ensaio físico. Ver [relatório](docs/qa-poster-and-target-2026-09-25.md). Ainda faltam rótulos humanos de ID, avaliação de outros pôsteres/fotos e gate em sessão independente; não promover M2 a validado.
+
 **Implementar:** múltiplas poses, seleção manual por toque/área de treino, IDs temporários apenas na sessão e associação temporal por posição/pose. Lista de poses do MediaPipe não é identidade estável. Congelar contagem e pedir nova seleção quando cruzamento, oclusão ou saída/reentrada tornarem a associação ambígua. Sem reconhecimento facial.
 
 **Importação experimental:** Arquivos/Fotos e replay estão implementados; em grupos, o app descarta contagens provisórias até o usuário tocar no aluno e reavalia poses em cache a partir do quadro escolhido. MediaPipe teve associação instável no clipe físico; Vision com calibração acompanhou 313/430 quadros e contou três eventos antes de perder o alvo. O próximo incremento precisa medir e melhorar cobertura **sem elevar trocas de identidade**, usando vídeos reais anotados e uma experiência clara para reseleção. Caixas de detecção não identificam professor/aluno por si.

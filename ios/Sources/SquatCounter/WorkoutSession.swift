@@ -80,6 +80,7 @@ private struct QATrackingFrame: Codable {
     let candidates: [PoseCandidate]
     let decision: String
     let angle: Double?
+    let torsoCenters: [[Double]?]
 }
 #endif
 
@@ -211,6 +212,7 @@ private final class CaptureSessionBox: @unchecked Sendable {
     private var playerObserver: Any?
     private var videoResults: [TimedPose] = []
     private var rawImportedResults: [TimedPose] = []
+    private var importedSelectionFrames: [VideoPoseFrame] = []
     private var currentAnalyzedVideoURL: URL?
     private var currentVideoObservationPTS: TimeInterval?
     private var liveRecordingResults: [TimedPose] = []
@@ -371,6 +373,12 @@ private final class CaptureSessionBox: @unchecked Sendable {
               let timestamp = currentVideoObservationPTS,
               targetCandidates.contains(candidate), let player = videoPlayer,
               let selectedFrame = rawImportedResults.lastIndex(where: { $0.pts <= timestamp }) else { return }
+        guard VideoSelectionEligibility.isEligible(importedSelectionFrames,
+                                                   selectedFrame: selectedFrame,
+                                                   candidateIndex: candidate.index) else {
+            videoAnalysisNotice = "Pose insuficiente para analisar agachamento neste trecho. Avance o vídeo ou escolha outro aluno."
+            return
+        }
         player.pause()
         let cached = rawImportedResults
         var counter = SquatCounter()
@@ -422,9 +430,10 @@ private final class CaptureSessionBox: @unchecked Sendable {
         // Playback may have stopped on an empty frame. Reposition within the cached
         // analysis so "choose again" always offers an actual selectable person.
         let current = currentVideoObservationPTS ?? videoPlayer?.currentTime().seconds ?? 0
-        if let selectable = rawImportedResults.filter({ !$0.candidates.isEmpty }).min(by: {
-            abs($0.pts - current) < abs($1.pts - current)
-        }) {
+        if let selectable = rawImportedResults.enumerated().filter({ offset, result in
+            result.candidates.contains { VideoSelectionEligibility.isEligible(importedSelectionFrames,
+                selectedFrame: offset, candidateIndex: $0.index) }
+        }).min(by: { abs($0.element.pts - current) < abs($1.element.pts - current) })?.element {
             currentVideoObservationPTS = selectable.pts
             apply(selectable)
             trackingDecision = .noSelection
@@ -437,9 +446,8 @@ private final class CaptureSessionBox: @unchecked Sendable {
         }
     }
 
-    private nonisolated static func analyzeCachedPoses(_ cached: [TimedPose], selectedFrame: Int,
-                                                       candidateIndex: Int, counter: SquatCounter) -> [TimedPose] {
-        let frames = cached.map { result in
+    private nonisolated static func selectionFrames(_ cached: [TimedPose]) -> [VideoPoseFrame] {
+        cached.map { result in
             VideoPoseFrame(timestamp: result.pts, observations: result.candidates.compactMap { candidate in
                 guard result.poseOptions.indices.contains(candidate.index) else { return nil }
                 let pose = result.poseOptions[candidate.index]
@@ -447,6 +455,11 @@ private final class CaptureSessionBox: @unchecked Sendable {
                                             confidence: pose.confidence)
             })
         }
+    }
+
+    private nonisolated static func analyzeCachedPoses(_ cached: [TimedPose], selectedFrame: Int,
+                                                       candidateIndex: Int, counter: SquatCounter) -> [TimedPose] {
+        let frames = selectionFrames(cached)
         let analysis = OfflineTargetAnalyzer.analyze(frames, selectedFrame: selectedFrame,
                                                      candidateIndex: candidateIndex, counter: counter)
         return zip(cached, analysis).map { raw, tracked in
@@ -693,6 +706,7 @@ private final class CaptureSessionBox: @unchecked Sendable {
         videoPlayer = nil
         videoResults = []
         rawImportedResults = []
+        importedSelectionFrames = []
         currentAnalyzedVideoURL = nil
         currentVideoObservationPTS = nil
         importedVideoHasMultiplePeople = false
@@ -768,7 +782,16 @@ private final class CaptureSessionBox: @unchecked Sendable {
                                   trace: args.contains("--qa-group-select") ? results.map {
                                     QATrackingFrame(pts: $0.pts, candidates: $0.candidates,
                                                     decision: String(describing: $0.tracking),
-                                                    angle: $0.frame.kneeAngle)
+                                                    angle: $0.frame.kneeAngle,
+                                                    torsoCenters: $0.poseOptions.map { pose in
+                                                        let joints = [11, 12, 23, 24]
+                                                        guard pose.landmarks.count > 24,
+                                                              joints.allSatisfy({ min(pose.landmarks[$0].visibility,
+                                                                                   pose.landmarks[$0].presence) >= 0.5 })
+                                                        else { return nil }
+                                                        return [joints.map { pose.landmarks[$0].x }.reduce(0, +) / 4,
+                                                                joints.map { pose.landmarks[$0].y }.reduce(0, +) / 4]
+                                                    })
                                   } : nil)
         do {
             let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -850,6 +873,7 @@ private final class CaptureSessionBox: @unchecked Sendable {
             let groupDetected = ImportedClipPolicy.requiresSelection(
                 candidateCounts: rawResults.map { $0.candidates.count })
             self.rawImportedResults = rawResults
+            self.importedSelectionFrames = Self.selectionFrames(rawResults)
             // No target has been selected on the first pass.
             let needsTarget = groupDetected
             let results: [TimedPose] = needsTarget ? rawResults.map { result in
@@ -886,9 +910,11 @@ private final class CaptureSessionBox: @unchecked Sendable {
             } else { player.play() }
             #if DEBUG
             let qaArguments = ProcessInfo.processInfo.arguments
+            let qaTargetAfter = qaArguments.first(where: { $0.hasPrefix("--qa-target-after=") })
+                .flatMap { Double($0.dropFirst("--qa-target-after=".count)) } ?? 0
             if qaArguments.contains("--qa-group-select"),
                groupDetected,
-               let sample = results.first(where: { !$0.candidates.isEmpty }),
+               let sample = results.first(where: { !$0.candidates.isEmpty && $0.pts >= qaTargetAfter }),
                let center = sample.candidates.min(by: { lhs, rhs in
                    let requestedX = qaArguments.first(where: { $0.hasPrefix("--qa-target-x=") })
                        .flatMap { Double($0.dropFirst("--qa-target-x=".count)) } ?? 0.5
@@ -934,7 +960,13 @@ private final class CaptureSessionBox: @unchecked Sendable {
             startupTiming.firstPose(at: ProcessInfo.processInfo.systemUptime)
         }
         landmarks = result.frame.landmarks.map { CGPoint(x: $0.x, y: $0.y) }
-        targetCandidates = result.candidates
+        if isChoosingVideoPerson && importedVideoHasMultiplePeople,
+           let selectedFrame = rawImportedResults.lastIndex(where: { $0.pts <= result.pts }) {
+            targetCandidates = result.candidates.filter {
+                VideoSelectionEligibility.isEligible(importedSelectionFrames,
+                    selectedFrame: selectedFrame, candidateIndex: $0.index)
+            }
+        } else { targetCandidates = result.candidates }
         trackingDecision = isChoosingVideoPerson && importedVideoHasMultiplePeople ? .noSelection : result.tracking
         imageAspectRatio = result.frame.imageAspectRatio
         repetitions = isChoosingVideoPerson && importedVideoHasMultiplePeople ? 0 : result.count
