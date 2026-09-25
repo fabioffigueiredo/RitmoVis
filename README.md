@@ -33,7 +33,9 @@ xcodebuild -workspace SquatCounter.xcworkspace -scheme SquatCounter -configurati
 swift test
 ```
 
-Para aparelho físico, defina sua equipe e um bundle identifier único nas configurações do projeto gerado ou em `project.yml` antes de gerar novamente. O identificador `com.example.ritmovis` é apenas um placeholder. A câmera não é validável no simulador.
+Para aparelho físico, confirme sua equipe e um bundle identifier único em `project.yml` antes de gerar novamente. O identificador atual `com.fabiofigueiredo.ritmovis.dev` é de desenvolvimento e está instalado separadamente do protótipo antigo no iPhone de fabio. A câmera não é validável no simulador.
+
+Para analisar vídeos enviados por outras pessoas, salve-os em Arquivos ou Fotos no iPhone e abra **Treino → Analisar vídeo recebido**. A análise fica no aparelho, seguida de replay com contagem/caixas detectadas; o clipe não entra no Histórico. **Se mais de uma pessoa for detectada em qualquer quadro analisado, as contagens provisórias são descartadas**. Toque em **Selecionar** sobre o aluno no replay para reprocessar a partir daquele instante; rastreamento em grupo ainda é experimental e pode se abster. Uma detecção falha ainda pode não reconhecer outra pessoa presente. Use o [protocolo de QA de vídeos](docs/video-qa-workflow.md) e obtenha consentimento para qualquer gravação de terceiros.
 
 ## Começar a validação M0
 
@@ -52,8 +54,8 @@ O código Remotion pode ser instalado com `cd video && npm ci`. Após colocar m�
 
 ## Situação
 
-O protótipo original teve testes de núcleo/UI e ensaios limitados em iPhone 15 em setembro de 2026; veja [status de QA](docs/qa-status.md) para a separação entre resultados históricos e verificações feitas nesta extração. Não há evidência de precisão geral, robustez entre pessoas/ângulos nem avaliação de técnica. O app processa localmente, grava apenas se a opção for ativada e importa somente um vídeo selecionado pelo usuário. Consulte o código e o [mapa de arquitetura](docs/architecture.md) para os detalhes.
+Em 24/09/2026, a suíte do simulador passou 44 testes (39 de núcleo e 5 de UI). No iPhone físico, o experimento de grupo contou três eventos com Vision e calibração explícita, mas perdeu o alvo antes do fim; isso **não** valida M2. Veja o [relatório de grupo](docs/qa-group-selection-2026-09-24.md), a [situação de QA](docs/qa-status.md) e o [handoff de desenvolvimento](docs/claude-handoff.md). Não há evidência de precisão geral, robustez entre pessoas/ângulos nem avaliação de técnica. O app processa localmente, grava apenas se a opção for ativada e importa somente um vídeo selecionado pelo usuário.
 
 ## Próximos passos
 
-Ver [roadmap](roadmap.md), [decisões](docs/decisions.md) e [publicação](docs/publication.md). Nenhuma distribuição, publicação ou licença própria foi definida nesta extração.
+Ver [roadmap](roadmap.md), [handoff para continuidade](docs/claude-handoff.md), [histórico](docs/project-history.md), [decisões](docs/decisions.md) e [publicação](docs/publication.md). Nenhuma distribuição, publicação ou licença própria foi definida nesta extração.

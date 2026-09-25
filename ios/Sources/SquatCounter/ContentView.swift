@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import AVKit
+import UniformTypeIdentifiers
 import SquatCounterCore
 
 private enum Theme {
@@ -14,6 +15,7 @@ struct ContentView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var session = WorkoutSession()
     @State private var pickerItem: PhotosPickerItem?
+    @State private var showingFileImporter = false
     @State private var didRunQA = false
 
     var body: some View {
@@ -36,6 +38,12 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .background && (session.isCameraActive || session.isStarting) { session.stop() }
         }
+        .fileImporter(isPresented: $showingFileImporter, allowedContentTypes: [.movie]) { result in
+            switch result {
+            case .success(let url): session.importVideoFile(url)
+            case .failure(let error): session.phaseText = "Não foi possível escolher o vídeo: \(error.localizedDescription)"
+            }
+        }
     }
 
     private var preparationScreen: some View {
@@ -43,8 +51,9 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 20) {
                 introduction
                 if let summary = session.workoutSummary { resultCard(summary) }
-                setupCard
+                videoAnalysisCard
                 if let player = session.videoPlayer { replayCard(player) }
+                setupCard
                 diagnosticsCard
             }
             .padding(16)
@@ -161,11 +170,52 @@ struct ContentView: View {
             Text("Replay").font(.headline)
             VideoPlayer(player: player)
                 .overlay(PoseOverlay(landmarks: session.landmarks, imageAspectRatio: session.imageAspectRatio))
+                .overlay(DetectedPeopleOverlay(candidates: replayCandidates,
+                                               imageAspectRatio: session.imageAspectRatio))
+                .overlay {
+                    if session.isChoosingVideoPerson {
+                        TargetSelectionOverlay(candidates: session.targetCandidates,
+                                               imageAspectRatio: session.imageAspectRatio,
+                                               tracking: session.trackingDecision,
+                                               select: session.selectPersonInVideo)
+                    }
+                }
+                .overlay(alignment: .topLeading) {
+                    Text("CONTAGEM  \(session.repetitions)")
+                        .font(.headline.monospacedDigit())
+                        .padding(8)
+                        .background(.black.opacity(0.82), in: RoundedRectangle(cornerRadius: 8))
+                        .padding(8)
+                }
                 .aspectRatio(session.imageAspectRatio, contentMode: .fit)
                 .background(.black)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
+                .accessibilityIdentifier("videoReplay")
             Text("\(session.repetitions) · \(session.phaseText)")
                 .font(.subheadline.monospacedDigit())
+            Text("Pessoas detectadas no quadro: \(session.targetCandidates.count)")
+                .font(.footnote).foregroundStyle(.white.opacity(0.72))
+            if session.importedVideoHasMultiplePeople {
+                Text(session.videoBackendUsed).font(.caption)
+                if session.isChoosingVideoPerson {
+                    Toggle("Usar este quadro em pé como referência (experimental)",
+                           isOn: $session.calibrateSelectedStandingFrame)
+                        .accessibilityIdentifier("standingCalibration")
+                    Text("Ative somente se o aluno estiver em pé neste quadro. Ajusta a contagem de ciclos, não avalia técnica correta.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if !session.isChoosingVideoPerson {
+                    Button("Escolher outra pessoa ou ponto") { session.choosePersonInVideo() }
+                        .buttonStyle(.bordered)
+                }
+                Text(session.isChoosingVideoPerson
+                     ? "Vídeo pausado: toque em Selecionar sobre o aluno. Você também pode avançar para outro quadro antes de escolher."
+                     : "Acompanhando a pessoa escolhida. Trechos anteriores à seleção não são contados; se a identidade ficar incerta, escolha novamente.")
+                    .font(.footnote).foregroundStyle(.yellow)
+            }
+            if let notice = session.videoAnalysisNotice {
+                Text(notice).font(.subheadline).accessibilityIdentifier("videoAnalysisNotice")
+            }
             if let url = session.replayURL {
                 ShareLink("Compartilhar vídeo original (sem contador)", item: url)
             }
@@ -173,13 +223,79 @@ struct ContentView: View {
         .card()
     }
 
+    private var replayCandidates: [PoseCandidate] {
+        guard session.importedVideoHasMultiplePeople, !session.isChoosingVideoPerson else {
+            return session.targetCandidates
+        }
+        if case .selected(let index) = session.trackingDecision {
+            return session.targetCandidates.filter { $0.index == index }
+        }
+        return []
+    }
+
+    private var videoAnalysisCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Analisar vídeo recebido", systemImage: "video.badge.waveform")
+                .font(.title3.weight(.bold)).foregroundStyle(Theme.accent)
+            Text("Abra um vídeo salvo em Arquivos ou Fotos. O app analisa os quadros no iPhone e mostra a contagem sincronizada durante a reprodução. O clipe não entra no Histórico de treinos.")
+                .font(.subheadline).foregroundStyle(.white.opacity(0.82))
+            HStack {
+                Button { showingFileImporter = true } label: {
+                    Label("Arquivos", systemImage: "folder")
+                }
+                PhotosPicker(selection: $pickerItem, matching: .videos) {
+                    Label("Fotos", systemImage: "photo.on.rectangle")
+                }
+                .onChange(of: pickerItem) { _, item in
+                    guard let item else { return }
+                    Task {
+                        await session.importVideo(item)
+                        pickerItem = nil
+                    }
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Theme.accent)
+            .disabled(session.isAnalyzing || session.isCameraActive)
+            Toggle("Apple Vision para vídeos com grupo (experimental)", isOn: $session.useVisionForVideo)
+                .disabled(session.isAnalyzing || session.isCameraActive)
+            Text("Vale para o próximo vídeo importado. A câmera ao vivo continua com MediaPipe Lite/Full.")
+                .font(.caption).foregroundStyle(.secondary)
+            #if DEBUG
+            if Bundle.main.url(forResource: "pexels-8837118-1280w", withExtension: "mp4") != nil {
+                Button("Ver teste: uma pessoa") { session.testLicensedClip() }
+                    .buttonStyle(.bordered)
+                    .disabled(session.isAnalyzing)
+            }
+            if Bundle.main.url(forResource: "pexels-6740245-group", withExtension: "mp4") != nil {
+                Button("Ver teste: três pessoas") { session.testGroupClip() }
+                    .buttonStyle(.bordered)
+                    .disabled(session.isAnalyzing)
+            }
+            #endif
+            if session.isAnalyzing {
+                ProgressView("Analisando vídeo no iPhone…")
+                    .tint(Theme.accent)
+                Button("Cancelar análise") { session.stop() }
+                    .buttonStyle(.bordered)
+            } else if session.videoPlayer != nil {
+                Label(session.phaseText, systemImage: "play.rectangle")
+                    .font(.subheadline).foregroundStyle(.white.opacity(0.82))
+            } else if session.phaseText != "Aguardando pose" {
+                Text(session.phaseText)
+                    .font(.subheadline).foregroundStyle(.yellow)
+            }
+            Text("Por enquanto, use vídeo horizontal. Em grupos, toque no aluno durante o replay para reanalisar; até a seleção, nenhuma repetição é atribuída.")
+                .font(.footnote).foregroundStyle(.white.opacity(0.72))
+        }
+        .card()
+    }
+
     private var diagnosticsCard: some View {
         DisclosureGroup("Testes e métricas") {
             VStack(alignment: .leading, spacing: 12) {
-                PhotosPicker("Importar vídeo horizontal", selection: $pickerItem, matching: .videos)
-                    .onChange(of: pickerItem) { _, item in Task { await session.importVideo(item) } }
-                Button("Testar clipe demonstrativo") { session.testLicensedClip() }
-                Text("Clipe opcional não incluído no projeto. Se fornecido pelo usuário, não entra no histórico de treinos.")
+                Text("Os clipes de QA aparecem acima somente no build local que inclui seus arquivos licenciados; mídia não é enviada ao Git nem entra no Histórico.")
+                Text("No clipe de grupo, selecione um aluno no replay para reanalisar; sem seleção, a contagem deve ficar em zero.")
                 if session.isHistoricalReplay {
                     Text("Métricas de inferência não disponíveis para este replay histórico.")
                 } else {
@@ -214,6 +330,11 @@ struct ContentView: View {
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--qa-clip-full") { session.model = .full; session.testLicensedClip() }
         else if args.contains("--qa-clip-lite") { session.model = .lite; session.testLicensedClip() }
+        else if args.contains("--qa-group-clip") { session.model = .lite; session.testGroupClip() }
+        else if args.contains("--qa-group-select") {
+            session.model = args.contains("--qa-model-full") ? .full : .lite
+            session.testGroupClip()
+        }
         else if args.contains("--qa-front-camera") {
             session.cameraChoice = .front
             session.startCamera()
@@ -355,6 +476,31 @@ private struct TargetSelectionOverlay: View {
                           y: offsetY + CGFloat(candidate.centerY) * imageHeight)
             }
         }
+    }
+}
+
+private struct DetectedPeopleOverlay: View {
+    let candidates: [PoseCandidate]
+    let imageAspectRatio: Double
+
+    var body: some View {
+        GeometryReader { geometry in
+            let frameAspect = geometry.size.width / max(geometry.size.height, 1)
+            let imageAspect = CGFloat(imageAspectRatio)
+            let imageWidth = frameAspect > imageAspect ? geometry.size.height * imageAspect : geometry.size.width
+            let imageHeight = frameAspect > imageAspect ? geometry.size.height : geometry.size.width / max(imageAspect, 0.01)
+            let offsetX = (geometry.size.width - imageWidth) / 2
+            let offsetY = (geometry.size.height - imageHeight) / 2
+            ForEach(candidates, id: \.index) { candidate in
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(.orange, lineWidth: 2)
+                    .frame(width: CGFloat(candidate.width) * imageWidth,
+                           height: CGFloat(candidate.height) * imageHeight)
+                    .position(x: offsetX + CGFloat(candidate.centerX) * imageWidth,
+                              y: offsetY + CGFloat(candidate.centerY) * imageHeight)
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 

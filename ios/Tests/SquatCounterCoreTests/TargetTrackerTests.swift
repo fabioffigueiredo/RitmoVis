@@ -22,6 +22,7 @@ final class TargetTrackerTests: XCTestCase {
         var tracker = TargetTracker()
         _ = tracker.select(person(0, x: 0.40), at: 0)
         XCTAssertEqual(tracker.update([person(0, x: 0.43), person(1, x: 0.45)], at: 0.1), .uncertain)
+        XCTAssertEqual(tracker.update([person(1, x: 0.45)], at: 0.2), .reselectionRequired)
     }
 
     func testShortDisappearanceCanRecoverButLongDisappearanceRequiresReselection() {

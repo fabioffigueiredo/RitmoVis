@@ -2,12 +2,37 @@ import XCTest
 
 @MainActor
 final class WorkoutFlowUITests: XCTestCase {
+    func testGroupSelectionKeepsReplayAndShowsAnalysis() {
+        let app = XCUIApplication()
+        // Exercise the real cached replay with MediaPipe on Simulator.
+        // Vision inference is measured separately on the physical device.
+        app.launchArguments = ["--qa-group-clip", "--qa-group-mediapipe"]
+        app.launch()
+        let select = app.buttons["Selecionar pessoa no quadro"].firstMatch
+        XCTAssertTrue(select.waitForExistence(timeout: 120))
+        for _ in 0..<5 where !select.isHittable { app.swipeUp() }
+        XCTAssertTrue(select.isHittable)
+        select.tap()
+        let notice = app.staticTexts["videoAnalysisNotice"]
+        XCTAssertTrue(notice.waitForExistence(timeout: 5))
+        let complete = NSPredicate(format: "label BEGINSWITH %@", "Trecho analisado:")
+        expectation(for: complete, evaluatedWith: notice)
+        waitForExpectations(timeout: 5)
+        XCTAssertTrue(app.buttons["Escolher outra pessoa ou ponto"].exists)
+        XCTAssertFalse(app.buttons["Parar análise"].exists)
+        app.buttons["Escolher outra pessoa ou ponto"].tap()
+        XCTAssertTrue(select.waitForExistence(timeout: 5))
+    }
+
     func testPreparationAndHistoryNavigation() {
         let app = XCUIApplication()
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Seu treino, em foco."].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Iniciar treino"].exists)
+        XCTAssertTrue(app.staticTexts["Analisar vídeo recebido"].exists)
+        XCTAssertTrue(app.buttons["Arquivos"].exists)
+        XCTAssertTrue(app.buttons["Fotos"].exists)
         app.tabBars.buttons["Histórico"].tap()
         XCTAssertTrue(app.navigationBars["Histórico"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Treino"].tap()

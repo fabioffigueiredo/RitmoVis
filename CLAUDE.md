@@ -1,11 +1,18 @@
 # Instruções de trabalho — RitmoVis
 
+**Comece por `docs/claude-handoff.md`.** Ele contém estado atual, próxima sequência, comandos e limites. Histórico de decisões/execuções: `docs/project-history.md`. A seleção offline usa `OfflineTargetAnalyzer` sobre poses em cache e preserva AVPlayer; Vision/calibração em pé são experimentos de importação, não validação de técnica.
+
 - Mantenha o escopo do produto como contagem experimental de ciclos de agachamento. Não descreva o resultado como correção de forma, segurança ou orientação de saúde.
 - `ios/project.yml` é a fonte da configuração Xcode; gere o `.xcodeproj` com XcodeGen. Abra o `.xcworkspace` criado pelo CocoaPods.
 - `ios/Package.swift` contém somente o núcleo testável em Swift Package Manager. A UI e MediaPipe são compilados pelo workspace.
+- A implementação de M2 está na branch `feat/m2-android-a0` enquanto não for integrada. `TargetTracker` associa geometria local e **não comprova identidade**; `WorkoutSession` só conta a pose selecionada e invalida ciclo parcial na incerteza. `fixtures/tracking-v1-synthetic.json` é o contrato compartilhado para o futuro Kotlin, não corpus de aceitação.
+- Em 24/09, 44 testes (39 núcleo + 5 UI) passaram no simulador; confira `docs/qa-group-selection-2026-09-24.md` e o `.xcresult` para contexto. O iPhone 15 físico recebeu o app de desenvolvimento separado (`com.fabiofigueiredo.ritmovis.dev`), mas a câmera nativa e a do app ficaram pretas no teste pareado. Não declare câmera, M2 ou beta validados até diagnóstico A/B e vídeos anotados.
+- Android nativo (Kotlin, CameraX, MediaPipe) começa em A0 **após** gate da beta iOS, lendo os mesmos fixtures. Não há Android Studio/SDK/ADB/Gradle nem aparelhos Android de QA configurados neste Mac; não confunda documentação de paridade com implementação.
 - Não versione modelos `.task`, clipes, capturas pessoais, outputs de render, Pods, node_modules, artefatos de build ou credenciais de assinatura.
+- O fluxo de vídeos recebidos está em `docs/video-qa-workflow.md`. Arquivos/Fotos importam localmente; vídeo de grupo se abstém até o toque no alvo e depois reavalia poses em cache a partir dele. A seleção offline é experimental e pode perder o alvo; não confundir caixas de pessoas com IDs estáveis, nem clipe importado com treino do Histórico.
 - Ao mudar thresholds/estado do contador, atualize testes relevantes e registre dispositivo, modelo, câmera, iluminação, frames e contagens esperadas/detectadas antes de afirmar melhoria.
 - Os recursos necessários, as fontes e as lacunas de autorização estão em `docs/assets-and-licenses.md`. Não presuma direito de redistribuição de mídia externa.
 - Diferencie sempre resultados herdados do protótipo e resultados repetidos no repositório independente em `docs/qa-status.md`.
+- Após editar `ios/project.yml`, execute `xcodegen generate` e `pod install --deployment` antes do build. Use `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` em `ios/`; para simulador, `xcodebuild -workspace SquatCounter.xcworkspace -scheme SquatCounter -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build`. O teste de UI do clipe requer recurso licenciado fora do Git e não deve ser apresentado como aprovado se foi excluído.
 - Leia `roadmap.md` antes de ampliar escopo: M0 valida uma pessoa; M2 seleciona uma pessoa entre várias; M4 testa contagem simultânea de 2–4 atletas. Não trate `numPoses > 1` como identidade estável.
 - Leia `docs/decisions.md` e `docs/publication.md` antes de mudar modelo, fluxo de dados ou alegações públicas. A peça 4:5 já foi renderizada fora deste repositório e aguarda aprovação; não publique automaticamente.

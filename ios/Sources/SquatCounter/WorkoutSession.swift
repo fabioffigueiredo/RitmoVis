@@ -54,6 +54,32 @@ private struct QACameraReport: Codable {
     let captureInterrupted: Bool
     let captureEvents: [String]
 }
+
+private struct QAClipReport: Codable {
+    let recordedAt: Date
+    let model: String
+    let calibration: String
+    let source: String
+    let repetitions: Int
+    let events: [RepEvent]
+    let metrics: BenchmarkMetrics
+    let framesWithMultipleCandidates: Int
+    let maximumCandidates: Int
+    let framesWithoutSelection: Int
+    let groupRequiresSelection: Bool
+    let selectionRequested: Bool
+    let selectedFrames: Int
+    let uncertainFrames: Int
+    let reselectionFrames: Int
+    let trace: [QATrackingFrame]?
+}
+
+private struct QATrackingFrame: Codable {
+    let pts: Double
+    let candidates: [PoseCandidate]
+    let decision: String
+    let angle: Double?
+}
 #endif
 
 struct WorkoutSummary {
@@ -93,6 +119,7 @@ private struct TimedPose: Sendable {
     let phase: String
     let event: RepEvent?
     let metrics: BenchmarkMetrics
+    var poseOptions: [PoseFrame] = []
 }
 
 private final class CameraFrameDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
@@ -140,8 +167,15 @@ private final class CaptureSessionBox: @unchecked Sendable {
     @Published var landmarks: [CGPoint] = []
     @Published private(set) var targetCandidates: [PoseCandidate] = []
     @Published private(set) var trackingDecision: TrackingDecision = .noSelection
+    @Published private(set) var importedVideoHasMultiplePeople = false
+    @Published private(set) var isChoosingVideoPerson = false
+    @Published private(set) var videoAnalysisNotice: String?
     @Published var imageAspectRatio = 1.0
     @Published var model: PoseModel = .lite
+    @Published var useVisionForVideo = false
+    @Published var calibrateSelectedStandingFrame = false
+    @Published private(set) var videoBackendUsed = "MediaPipe"
+    private var videoCalibrationUsed = "default-155-105"
     @Published var cameraChoice: CameraChoice = .back
     @Published var recordWorkout = false
     @Published var exercise: Exercise = .bodyweightSquat
@@ -174,6 +208,9 @@ private final class CaptureSessionBox: @unchecked Sendable {
     private var token = UUID()
     private var playerObserver: Any?
     private var videoResults: [TimedPose] = []
+    private var rawImportedResults: [TimedPose] = []
+    private var currentAnalyzedVideoURL: URL?
+    private var currentVideoObservationPTS: TimeInterval?
     private var liveRecordingResults: [TimedPose] = []
     private var pendingRecordingResults: [TimedPose] = []
     private var pendingRecordingSummary: WorkoutSummary?
@@ -326,6 +363,95 @@ private final class CaptureSessionBox: @unchecked Sendable {
         phaseText = "Confirmando pessoa selecionada…"
     }
 
+    func selectPersonInVideo(_ candidate: PoseCandidate) {
+        guard !isAnalyzing, importedVideoHasMultiplePeople,
+              let url = currentAnalyzedVideoURL,
+              let timestamp = currentVideoObservationPTS,
+              targetCandidates.contains(candidate), let player = videoPlayer,
+              let selectedFrame = rawImportedResults.lastIndex(where: { $0.pts <= timestamp }) else { return }
+        player.pause()
+        let cached = rawImportedResults
+        var counter = SquatCounter()
+        if calibrateSelectedStandingFrame {
+            guard cached[selectedFrame].poseOptions.indices.contains(candidate.index),
+                  let angle = cached[selectedFrame].poseOptions[candidate.index].kneeAngle,
+                  let calibrated = OfflineTargetAnalyzer.calibratedCounter(standingAngle: angle,
+                    confidence: cached[selectedFrame].poseOptions[candidate.index].confidence) else {
+                videoAnalysisNotice = "Referência insuficiente. Avance para um quadro em pé, com joelho visível, ou desative a calibração."
+                return
+            }
+            counter = calibrated
+            videoCalibrationUsed = "standing-reference-v1: top=\(counter.standingAngle), bottom=\(counter.bottomAngle)"
+        } else { videoCalibrationUsed = "default-155-105" }
+        let selectedCounter = counter
+        let id = token
+        isAnalyzing = true
+        videoAnalysisNotice = "Analisando a pessoa escolhida…"
+        Task { [weak self] in
+            let results = await Task.detached(priority: .userInitiated) {
+                Self.analyzeCachedPoses(cached, selectedFrame: selectedFrame, candidateIndex: candidate.index,
+                                       counter: selectedCounter)
+            }.value
+            guard let self, self.token == id, self.videoPlayer === player else { return }
+            self.videoResults = results
+            self.events = results.compactMap(\.event)
+            self.isAnalyzing = false
+            self.isChoosingVideoPerson = false
+            let followed = results.dropFirst(selectedFrame).filter {
+                if case .selected = $0.tracking { return true }; return false
+            }.count
+            self.videoAnalysisNotice = "Trecho analisado: \(self.events.count) repetições · \(followed)/\(results.count - selectedFrame) quadros acompanhados."
+            self.apply(results[selectedFrame])
+            #if DEBUG
+            self.saveQAClipReportIfRequested(source: url, results: results, selectionRequested: true)
+            #endif
+            await player.seek(to: CMTime(seconds: timestamp, preferredTimescale: 600),
+                              toleranceBefore: .zero, toleranceAfter: .zero)
+            guard self.token == id, self.videoPlayer === player else { return }
+            player.play()
+        }
+    }
+
+    func choosePersonInVideo() {
+        guard !isAnalyzing, importedVideoHasMultiplePeople else { return }
+        videoPlayer?.pause()
+        calibrateSelectedStandingFrame = false
+        isChoosingVideoPerson = true
+    }
+
+    private nonisolated static func analyzeCachedPoses(_ cached: [TimedPose], selectedFrame: Int,
+                                                       candidateIndex: Int, counter: SquatCounter) -> [TimedPose] {
+        let frames = cached.map { result in
+            VideoPoseFrame(timestamp: result.pts, observations: result.candidates.compactMap { candidate in
+                guard result.poseOptions.indices.contains(candidate.index) else { return nil }
+                let pose = result.poseOptions[candidate.index]
+                return VideoPoseObservation(candidate: candidate, kneeAngle: pose.kneeAngle,
+                                            confidence: pose.confidence)
+            })
+        }
+        let analysis = OfflineTargetAnalyzer.analyze(frames, selectedFrame: selectedFrame,
+                                                     candidateIndex: candidateIndex, counter: counter)
+        return zip(cached, analysis).map { raw, tracked in
+            let pose: PoseFrame
+            if case .selected(let index) = tracked.decision, raw.poseOptions.indices.contains(index) {
+                pose = raw.poseOptions[index]
+            } else {
+                pose = PoseFrame(landmarks: [], confidence: 0, kneeAngle: nil,
+                                 imageAspectRatio: raw.frame.imageAspectRatio)
+            }
+            let phase: String
+            switch tracked.decision {
+            case .selected: phase = tracked.phase.displayText
+            case .noSelection: phase = "Antes do ponto de seleção"
+            case .uncertain: phase = "Identidade incerta — contagem pausada"
+            case .reselectionRequired: phase = "Pessoa perdida — escolha novamente"
+            }
+            return TimedPose(pts: raw.pts, frame: pose, candidates: raw.candidates,
+                             tracking: tracked.decision, count: tracked.count, phase: phase,
+                             event: tracked.event, metrics: raw.metrics, poseOptions: raw.poseOptions)
+        }
+    }
+
     func stop() {
         #if DEBUG
         saveQACameraReportIfRequested()
@@ -387,11 +513,38 @@ private final class CaptureSessionBox: @unchecked Sendable {
         analyzeVideo(at: movie.url)
     }
 
+    func importVideoFile(_ selectedURL: URL) {
+        let accessed = selectedURL.startAccessingSecurityScopedResource()
+        defer { if accessed { selectedURL.stopAccessingSecurityScopedResource() } }
+        do {
+            let suffix = selectedURL.pathExtension.isEmpty ? "mov" : selectedURL.pathExtension
+            let copy = FileManager.default.temporaryDirectory
+                .appendingPathComponent("ritmovis-import-\(UUID().uuidString)")
+                .appendingPathExtension(suffix)
+            try FileManager.default.copyItem(at: selectedURL, to: copy)
+            analyzeVideo(at: copy)
+        } catch {
+            phaseText = "Não foi possível abrir o vídeo: \(error.localizedDescription)"
+        }
+    }
+
     func testLicensedClip() {
         guard let url = Bundle.main.url(forResource: "pexels-8837118-1280w", withExtension: "mp4") else {
             phaseText = "Clipe de teste não incluído"
             return
         }
+        analyzeVideo(at: url)
+    }
+
+    func testGroupClip() {
+        guard let url = Bundle.main.url(forResource: "pexels-6740245-group", withExtension: "mp4") else {
+            phaseText = "Clipe de grupo não incluído"
+            return
+        }
+        useVisionForVideo = true
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--qa-group-mediapipe") { useVisionForVideo = false }
+        #endif
         analyzeVideo(at: url)
     }
 
@@ -463,8 +616,10 @@ private final class CaptureSessionBox: @unchecked Sendable {
 
     private func analyzeVideo(at url: URL) {
         stop()
+        calibrateSelectedStandingFrame = false
         workoutSummary = nil
         replayURL = nil
+        currentAnalyzedVideoURL = url
         let id = token
         isAnalyzing = true
         phaseText = "Analisando vídeo antes da reprodução"
@@ -483,7 +638,9 @@ private final class CaptureSessionBox: @unchecked Sendable {
         let timing = startupTiming
         let prefix = "\((modelUsed ?? model).rawValue),\(metrics.processedFrames),\(metrics.droppedFrames),\(metrics.noPoseFrames),\(metrics.nearBlackFrames),\(metrics.meanLatencyMs),\(metrics.p95LatencyMs),\(metrics.elapsedSeconds),\(metrics.processedFPS),\(metrics.inputWidth),\(metrics.inputHeight),\(timing.tapToVisualResponseMs),\(timing.tapToCaptureMs),\(timing.tapToFirstFrameMs),\(timing.tapToFirstPoseMs),\(timing.permissionWaitMs),\(timing.startupExcludingPermissionMs)"
         let rows = events.isEmpty ? [prefix + ",,"] : events.map { prefix + ",\($0.timestamp),\($0.confidence)" }
-        return ([header] + rows).joined(separator: "\n")
+        let backend = isCameraActive ? "MediaPipe \((modelUsed ?? model).rawValue)" : videoBackendUsed
+        let calibration = videoCalibrationUsed.replacingOccurrences(of: ",", with: ";")
+        return ([header + ",backend,calibration"] + rows.map { $0 + ",\(backend),\(calibration)" }).joined(separator: "\n")
     }
 
     private func endSession() {
@@ -500,6 +657,12 @@ private final class CaptureSessionBox: @unchecked Sendable {
         videoPlayer?.pause()
         videoPlayer = nil
         videoResults = []
+        rawImportedResults = []
+        currentAnalyzedVideoURL = nil
+        currentVideoObservationPTS = nil
+        importedVideoHasMultiplePeople = false
+        isChoosingVideoPerson = false
+        videoAnalysisNotice = nil
         isAnalyzing = false
     }
 
@@ -533,6 +696,40 @@ private final class CaptureSessionBox: @unchecked Sendable {
     }
 
     #if DEBUG
+    private func saveQAClipReportIfRequested(source: URL, results: [TimedPose],
+                                             selectionRequested: Bool) {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("--qa-clip-lite") || args.contains("--qa-clip-full")
+                || args.contains("--qa-group-clip") || args.contains("--qa-group-select") else { return }
+        let report = QAClipReport(recordedAt: Date(), model: videoBackendUsed,
+                                  calibration: videoCalibrationUsed,
+                                  source: source.lastPathComponent, repetitions: events.count,
+                                  events: events, metrics: results.last?.metrics ?? metrics,
+                                  framesWithMultipleCandidates: results.filter { $0.candidates.count > 1 }.count,
+                                  maximumCandidates: results.map { $0.candidates.count }.max() ?? 0,
+                                  framesWithoutSelection: results.filter { $0.tracking == .noSelection }.count,
+                                  groupRequiresSelection: ImportedClipPolicy.requiresSelection(
+                                    candidateCounts: results.map { $0.candidates.count }),
+                                  selectionRequested: selectionRequested,
+                                  selectedFrames: results.filter {
+                                    if case .selected = $0.tracking { return true }; return false
+                                  }.count,
+                                  uncertainFrames: results.filter { $0.tracking == .uncertain }.count,
+                                  reselectionFrames: results.filter { $0.tracking == .reselectionRequired }.count,
+                                  trace: args.contains("--qa-group-select") ? results.map {
+                                    QATrackingFrame(pts: $0.pts, candidates: $0.candidates,
+                                                    decision: String(describing: $0.tracking),
+                                                    angle: $0.frame.kneeAngle)
+                                  } : nil)
+        do {
+            let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            try JSONEncoder().encode(report).write(
+                to: documents.appendingPathComponent("qa-clip-diagnostics.json"), options: .atomic)
+        } catch {
+            print("QA clip diagnostics could not be saved: \(error.localizedDescription)")
+        }
+    }
+
     private func saveQACameraReportIfRequested() {
         let args = ProcessInfo.processInfo.arguments
         guard args.contains("--qa-camera") || args.contains("--qa-front-camera")
@@ -564,33 +761,88 @@ private final class CaptureSessionBox: @unchecked Sendable {
 
     private func prepareWorker(id: UUID, videoURL: URL?) throws {
         resetResults()
-        let newWorker = try InferenceWorker(model: model, requiresExplicitSelection: videoURL == nil) { [weak self] result in
+        let args = ProcessInfo.processInfo.arguments
+        let vision = videoURL != nil && (useVisionForVideo || args.contains("--qa-apple-vision"))
+        let hybrid = videoURL != nil && args.contains("--qa-hybrid")
+        let independent = videoURL != nil && args.contains("--qa-independent-frames")
+        videoBackendUsed = hybrid ? "Vision + MediaPipe \(model.rawValue) cropped"
+            : vision ? "Apple Vision VNDetectHumanBodyPoseRequest"
+            : "MediaPipe \(model.rawValue) \(independent ? "image" : "video")"
+        videoCalibrationUsed = "default-155-105"
+        let newWorker = try InferenceWorker(model: model,
+                                             useVisionForVideo: vision,
+                                             hybridExperiment: hybrid, independentFrameExperiment: independent,
+                                             requiresExplicitSelection: videoURL == nil) { [weak self] result in
             guard let self, self.token == id, videoURL == nil else { return }
             self.apply(result)
             if let event = result.event { self.events.append(event) }
             if self.activeRecordingURL != nil && self.movieOutput.isRecording {
                 self.liveRecordingResults.append(result)
             }
-        } complete: { [weak self] results, errorMessage in
+        } complete: { [weak self] rawResults, errorMessage in
             guard let self, self.token == id, let videoURL else { return }
-            guard !results.isEmpty else {
+            if let errorMessage {
                 self.isAnalyzing = false
-                self.phaseText = errorMessage ?? "Nenhum quadro analisável"
+                self.phaseText = "Análise incompleta — nenhum resultado publicado: \(errorMessage)"
                 return
             }
+            guard !rawResults.isEmpty else {
+                self.isAnalyzing = false
+                self.phaseText = "Nenhum quadro analisável"
+                return
+            }
+            let groupDetected = ImportedClipPolicy.requiresSelection(
+                candidateCounts: rawResults.map { $0.candidates.count })
+            self.rawImportedResults = rawResults
+            // No target has been selected on the first pass.
+            let needsTarget = groupDetected
+            let results: [TimedPose] = needsTarget ? rawResults.map { result in
+                TimedPose(pts: result.pts,
+                          frame: PoseFrame(landmarks: [], confidence: 0, kneeAngle: nil,
+                                           imageAspectRatio: result.frame.imageAspectRatio),
+                          candidates: result.candidates, tracking: .noSelection, count: 0,
+                          phase: "Selecione a pessoa que deseja analisar",
+                          event: nil, metrics: result.metrics, poseOptions: result.poseOptions)
+            } : rawResults
             self.videoResults = results
+            self.importedVideoHasMultiplePeople = groupDetected
+            self.isChoosingVideoPerson = needsTarget
             self.isAnalyzing = false
             self.events = results.compactMap(\.event)
             self.metrics = results[results.count - 1].metrics
+            #if DEBUG
+            self.saveQAClipReportIfRequested(source: videoURL, results: results,
+                                             selectionRequested: false)
+            #endif
             self.processedFrames = self.metrics.processedFrames
             self.droppedFrames = self.metrics.droppedFrames
             let player = AVPlayer(url: videoURL)
             self.videoPlayer = player
             self.installObserver(on: player, id: id)
-            self.phaseText = "Reproduzindo análise"
+            self.phaseText = needsTarget
+                ? "Mais de uma pessoa detectada — toque no aluno para analisar"
+                : "Reproduzindo análise"
             self.isRunning = false
             self.startedAt = nil
-            player.play()
+            if needsTarget, let first = results.first {
+                self.currentVideoObservationPTS = first.pts
+                self.apply(first)
+            } else { player.play() }
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--qa-group-select"),
+               groupDetected,
+               let sample = results.first(where: { !$0.candidates.isEmpty }),
+               let center = sample.candidates.min(by: {
+                   abs($0.centerX - 0.5) < abs($1.centerX - 0.5)
+               }) {
+                Task { @MainActor in
+                    self.currentVideoObservationPTS = sample.pts
+                    self.apply(sample)
+                    self.calibrateSelectedStandingFrame = ProcessInfo.processInfo.arguments.contains("--qa-calibrate-standing")
+                    self.selectPersonInVideo(center)
+                }
+            }
+            #endif
         }
         worker = newWorker
         if videoURL == nil { frameDelegate.setWorker(newWorker) }
@@ -601,6 +853,10 @@ private final class CaptureSessionBox: @unchecked Sendable {
             Task { @MainActor [weak self] in
                 guard let self, self.token == id else { return }
                 if let result = self.videoResults.last(where: { $0.pts <= time.seconds }) {
+                    if self.isChoosingVideoPerson, self.currentVideoObservationPTS != result.pts {
+                        self.calibrateSelectedStandingFrame = false
+                    }
+                    self.currentVideoObservationPTS = result.pts
                     self.apply(result)
                 } else if !self.videoResults.isEmpty {
                     self.repetitions = 0
@@ -850,10 +1106,13 @@ private final class InferenceWorker: @unchecked Sendable {
     private let update: @MainActor (TimedPose) -> Void
     private let complete: @MainActor ([TimedPose], String?) -> Void
 
-    init(model: PoseModel, requiresExplicitSelection: Bool,
+    init(model: PoseModel, useVisionForVideo: Bool = false,
+         hybridExperiment: Bool = false, independentFrameExperiment: Bool = false,
+         requiresExplicitSelection: Bool,
          update: @escaping @MainActor (TimedPose) -> Void,
          complete: @escaping @MainActor ([TimedPose], String?) -> Void) throws {
-        detector = try PoseDetector(model: model)
+        detector = try PoseDetector(model: model, useVisionForVideo: useVisionForVideo,
+                                    hybridExperiment: hybridExperiment, independentFrameExperiment: independentFrameExperiment)
         self.requiresExplicitSelection = requiresExplicitSelection
         self.update = update
         self.complete = complete
@@ -931,7 +1190,11 @@ private final class InferenceWorker: @unchecked Sendable {
         }
         lock.lock(); activeReader = nil; lock.unlock()
         guard !isCancelled else { return }
-        finish(results, error: reader.status == .failed ? reader.error?.localizedDescription : nil)
+        guard reader.status == .completed else {
+            finish(results, error: reader.error?.localizedDescription ?? "Leitura do vídeo interrompida")
+            return
+        }
+        finish(results, error: nil)
     }
 
     private func finish(_ results: [TimedPose], error: String?) {
@@ -995,7 +1258,8 @@ private final class InferenceWorker: @unchecked Sendable {
             }
             return TimedPose(pts: pts, frame: frame, candidates: batch.candidates,
                              tracking: decision, count: counter.repetitions,
-                             phase: phase, event: event, metrics: currentMetrics)
+                             phase: phase, event: event, metrics: currentMetrics,
+                             poseOptions: batch.poses)
         } catch {
             dropped += 1
             return nil

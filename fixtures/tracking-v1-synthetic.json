@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "fixtureID": "crossing-requires-reselection",
+  "synthetic": true,
+  "coordinateSystem": "normalized-unmirrored-analysis-frame",
+  "frames": [
+    {"timeSeconds": 0.0, "observations": [{"index": 0, "centerX": 0.40, "centerY": 0.50, "width": 0.30, "height": 0.30, "confidence": 0.90, "kneeAngle": 170}], "expectedTracking": "noSelection", "expectedCount": 0, "selectAfterIndex": 0},
+    {"timeSeconds": 0.1, "observations": [{"index": 1, "centerX": 0.40, "centerY": 0.50, "width": 0.30, "height": 0.30, "confidence": 0.90, "kneeAngle": 170}], "expectedTracking": "selected", "expectedIndex": 1, "expectedCount": 0},
+    {"timeSeconds": 0.2, "observations": [{"index": 0, "centerX": 0.41, "centerY": 0.50, "width": 0.30, "height": 0.30, "confidence": 0.90, "kneeAngle": 145}], "expectedTracking": "selected", "expectedIndex": 0, "expectedCount": 0},
+    {"timeSeconds": 0.3, "observations": [{"index": 0, "centerX": 0.42, "centerY": 0.50, "width": 0.30, "height": 0.30, "confidence": 0.90, "kneeAngle": 100}], "expectedTracking": "selected", "expectedIndex": 0, "expectedCount": 0},
+    {"timeSeconds": 0.4, "observations": [{"index": 0, "centerX": 0.43, "centerY": 0.50, "width": 0.30, "height": 0.30, "confidence": 0.90, "kneeAngle": 120}, {"index": 1, "centerX": 0.45, "centerY": 0.50, "width": 0.30, "height": 0.30, "confidence": 0.90, "kneeAngle": 165}], "expectedTracking": "uncertain", "expectedCount": 0},
+    {"timeSeconds": 0.5, "observations": [{"index": 0, "centerX": 0.45, "centerY": 0.50, "width": 0.30, "height": 0.30, "confidence": 0.90, "kneeAngle": 165}], "expectedTracking": "reselectionRequired", "expectedCount": 0},
+    {"timeSeconds": 0.6, "observations": [{"index": 0, "centerX": 0.45, "centerY": 0.50, "width": 0.30, "height": 0.30, "confidence": 0.90, "kneeAngle": 165}], "expectedTracking": "reselectionRequired", "expectedCount": 0, "selectAfterIndex": 0},
+    {"timeSeconds": 0.7, "observations": [{"index": 1, "centerX": 0.45, "centerY": 0.50, "width": 0.30, "height": 0.30, "confidence": 0.90, "kneeAngle": 170}], "expectedTracking": "selected", "expectedIndex": 1, "expectedCount": 0},
+    {"timeSeconds": 0.8, "observations": [{"index": 0, "centerX": 0.46, "centerY": 0.50, "width": 0.30, "height": 0.30, "confidence": 0.90, "kneeAngle": 145}], "expectedTracking": "selected", "expectedIndex": 0, "expectedCount": 0},
+    {"timeSeconds": 0.9, "observations": [{"index": 0, "centerX": 0.47, "centerY": 0.50, "width": 0.30, "height": 0.30, "confidence": 0.90, "kneeAngle": 100}], "expectedTracking": "selected", "expectedIndex": 0, "expectedCount": 0},
+    {"timeSeconds": 1.0, "observations": [{"index": 0, "centerX": 0.47, "centerY": 0.50, "width": 0.30, "height": 0.30, "confidence": 0.90, "kneeAngle": 120}], "expectedTracking": "selected", "expectedIndex": 0, "expectedCount": 0},
+    {"timeSeconds": 1.1, "observations": [{"index": 0, "centerX": 0.47, "centerY": 0.50, "width": 0.30, "height": 0.30, "confidence": 0.90, "kneeAngle": 165}], "expectedTracking": "selected", "expectedIndex": 0, "expectedCount": 1}
+  ]
+}

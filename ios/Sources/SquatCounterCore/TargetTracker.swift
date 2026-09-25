@@ -1,7 +1,7 @@
 import Foundation
 
 /// A frame-local pose observation. `index` is never an identity across frames.
-public struct PoseCandidate: Equatable, Sendable {
+public struct PoseCandidate: Equatable, Sendable, Codable {
     public let index: Int
     public let centerX: Double
     public let centerY: Double
@@ -63,8 +63,12 @@ public struct TargetTracker: Sendable {
             return (candidate, distance + 0.2 * sizeChange)
         }.sorted { $0.score < $1.score }
 
-        guard let best = ranked.first else { return .uncertain }
+        guard let best = ranked.first else {
+            if !candidates.isEmpty { invalidateSelection() }
+            return .uncertain
+        }
         if ranked.count > 1 && ranked[1].score - best.score < 0.06 {
+            invalidateSelection()
             return .uncertain
         }
         self.anchor = best.candidate
@@ -79,5 +83,11 @@ public struct TargetTracker: Sendable {
         candidate.width.isFinite && candidate.width > 0 && candidate.width <= 1 &&
         candidate.height.isFinite && candidate.height > 0 && candidate.height <= 1 &&
         candidate.confidence.isFinite && candidate.confidence >= 0.5
+    }
+
+    private mutating func invalidateSelection() {
+        anchor = nil
+        lastConfirmedAt = nil
+        requiresReselection = true
     }
 }

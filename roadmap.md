@@ -1,6 +1,6 @@
 # Evolução testada do RitmoVis
 
-**Estado em 23/09/2026:** existe um contador experimental de agachamento para uma pessoa no iPhone 15, com importação de vídeo, câmera frontal/traseira, gravação opcional, histórico e replay. O clipe Pexels analisado no aparelho produziu quatro contagens para quatro ciclos observados. Isso não valida precisão geral, análise de técnica ou operação em turma. Cada marco abaixo só avança com evidência registrada em `docs/qa-status.md`.
+**Estado em 25/09/2026:** existe um contador experimental de agachamento no iPhone 15, com importação de vídeo, câmera frontal/traseira, gravação opcional, histórico e replay. M2 possui seleção em cache, abstenção e experimento Vision/calibração, mas **não passou** no gate físico: no clipe de grupo, houve três eventos e perda do alvo após 12,52 s, sem anotação independente completa. O clipe de uma pessoa teve quatro eventos observados; nada disso valida precisão geral, técnica ou operação em turma. O produto futuro terá iOS **e Android**, com betas separadas e os mesmos critérios de aceitação. Use [handoff](docs/claude-handoff.md) e [QA M2](docs/qa-group-selection-2026-09-24.md) como estado atual; cada marco só avança com evidência registrada em `docs/qa-status.md`.
 
 ## M0 — consolidar o agachamento de uma pessoa
 
@@ -10,7 +10,7 @@
 
 **Dados e teste:** anotar manualmente pelo menos 50 ciclos em gravações autorizadas de pessoas/ângulos/iluminação variados, com início/fim de cada repetição e tentativas incompletas. Executar 10 minutos contínuos de câmera ao vivo. Testar frente/trás, retrato/paisagem, entrada/saída do quadro, oclusão, pausa, interrupção e gravação ligada/desligada. Reportar TP/FP/FN, duplicações e instante do +1, não só o total.
 
-**Gate:** em cenário controlado definido antes do ensaio, alvo de ≥95% dos ciclos anotados contados, ≥15 quadros processados/s sustentados e nenhum arquivo corrompido. Falhar ou não coletar todos os dados significa “experimento com limites”, não funcionalidade validada. Ensaios independentes ainda serão necessários para alegação de generalização.
+**Gate:** em cenário controlado definido antes do ensaio, alvo de precisão e recall ≥95% nas repetições avaliáveis, ≥15 quadros processados/s sustentados e nenhum arquivo corrompido. Falhar ou não coletar todos os dados significa “experimento com limites”, não funcionalidade validada. Ensaios independentes ainda serão necessários para alegação de generalização.
 
 ## M1 — exercícios adicionais, um por vez
 
@@ -23,6 +23,8 @@
 ## M2 — selecionar e manter **uma** pessoa numa cena com várias
 
 **Implementar:** múltiplas poses, seleção manual por toque/área de treino, IDs temporários apenas na sessão e associação temporal por posição/pose. Lista de poses do MediaPipe não é identidade estável. Congelar contagem e pedir nova seleção quando cruzamento, oclusão ou saída/reentrada tornarem a associação ambígua. Sem reconhecimento facial.
+
+**Importação experimental:** Arquivos/Fotos e replay estão implementados; em grupos, o app descarta contagens provisórias até o usuário tocar no aluno e reavalia poses em cache a partir do quadro escolhido. MediaPipe teve associação instável no clipe físico; Vision com calibração acompanhou 313/430 quadros e contou três eventos antes de perder o alvo. O próximo incremento precisa medir e melhorar cobertura **sem elevar trocas de identidade**, usando vídeos reais anotados e uma experiência clara para reseleção. Caixas de detecção não identificam professor/aluno por si.
 
 **Teste:** vídeos consentidos com cruzamentos, oclusões, câmera frontal espelhada e duas pessoas fazendo repetições ao mesmo tempo. Anotar atleta-alvo por quadro/evento; medir trocas de identidade, contagens atribuídas à pessoa errada, tempo de recuperação e abstenções. Meta inicial: **zero contagens cruzadas nos fixtures anotados**; este gate não significa robustez em qualquer academia.
 
@@ -39,6 +41,14 @@
 **Dimensionamento:** levantar campo de visão, oclusões e sobreposição por estação; comparar câmera por estação, poucas câmeras compartilhadas e processamento local/servidor. Instrumentar decodificação, inferência multi-pose, associação, filas, memória, temperatura, rede e quadros perdidos no hardware real. Jetson Orin NX 16 GB e NVIDIA L4 24 GB são candidatos a benchmark, não capacidade prometida. Escalar para turma inteira só depois do piloto e de testes com carga e cruzamentos representativos.
 
 **Gate:** comparar relatório por aluno com anotação manual, incluindo FP/FN, troca de identidade, duração e períodos de abstenção; nenhum resultado de um aluno deve ser creditado a outro nos cenários de aceitação. Antes do piloto, definir responsável pelo tratamento, base legal, transparência, acesso, retenção e avaliar RIPD com assessoria adequada. [ANPD](https://www.gov.br/anpd/pt-br/canais_atendimento/agente-de-tratamento/relatorio-de-impacto-a-protecao-de-dados-pessoais-ripd)
+
+## Betas individuais iOS e Android — antes de M4
+
+**Beta iOS para profissionais:** somente após M0 e M2 passarem em conjunto de aceitação independente: nenhuma repetição creditada a outra pessoa, precisão e recall ≥95% nas repetições avaliáveis, cobertura ≥80% das repetições observáveis, captura sustentada e arquivos íntegros. Completar permissões, interrupções, gravação, replay, exclusão, pouco espaço, acessibilidade e TestFlight. O resultado fica limitado ao corpus/aparelhos ensaiados.
+
+**Android A0:** criar `android/` nativo em Kotlin após o gate da beta iOS, começando por importação de vídeo e mesma máquina de estados, limiares e eventos dos fixtures versionados em `fixtures/`. Nada de portar o código Swift para um framework multiplataforma antes de medir custo e divergência. **A1:** CameraX com prévia/análise, MediaPipe Pose Landmarker, seleção temporária, gravação/replay e histórico. Usar estratégia não bloqueante para o analisador e sempre liberar `ImageProxy` após análise, conforme [CameraX](https://developer.android.com/media/camera/camerax/analyze). **A2:** repetir o gate em pelo menos um Android intermediário e um recente, físicos, mais emulador para compatibilidade; restringir aparelhos suportados se necessário. O [MediaPipe Android](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker/android) suporta câmera e vídeo, mas uma compilação não valida FPS, energia ou contagem. Piso provisório Android 8/API 26. Sem Android Studio/SDK/Gradle/ADB utilizáveis nem aparelhos Android informados neste Mac em 24/09; instalação, escolha de aparelhos e testes são passos futuros, não concluídos.
+
+O fixture `fixtures/tracking-v1-synthetic.json` é contrato comportamental **sintético**, não vídeo de aceitação: traz tempo, candidatos por quadro, seleção após quadro, decisão esperada e contagem. Índices são locais ao quadro; não são identidade nominal. O teste Swift lê este arquivo hoje; o futuro núcleo Kotlin deverá ler o **mesmo** arquivo sem reinterpretar os estados. Diferenças de pose entre modelos/aparelhos serão medidas separadamente. Por padrão, inferência permanece no aparelho e dados pessoais fora do Git.
 
 ## M5 — ocupação da academia (produto separado)
 
