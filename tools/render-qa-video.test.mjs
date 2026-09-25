@@ -26,6 +26,13 @@ test('selected box and count come from the diagnostic trace, not a simulated UI'
   assert.match(svg, /SIMULADOR IPHONE 15/);
 });
 
+test('physical iPhone evidence is labelled as physical, never simulator', () => {
+  const svg = frameOverlaySvg({ decision: 'selected(index: 0)', candidates: [], pts: 0 }, [],
+    1280, 720, 'IPHONE DE FABIO (FÍSICO)');
+  assert.match(svg, /IPHONE DE FABIO \(FÍSICO\)/);
+  assert.doesNotMatch(svg, /SIMULADOR/);
+});
+
 test('ambiguous frame never paints an athlete as confirmed', () => {
   const svg = frameOverlaySvg({
     decision: 'uncertain',

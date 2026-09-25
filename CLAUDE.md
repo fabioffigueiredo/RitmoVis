@@ -6,6 +6,8 @@
 
 **Incremento de 25/09:** leia `docs/qa-single-target-2026-09-25.md` e `docs/recording-protocol-single-target.md`. O rastreador agora usa um resumo cromático temporário do tronco como evidência auxiliar, confirma recuperação após lacuna em dois quadros e prefere abster-se quando faltar evidência. A revisão Astra corrigiu recuperação em 30/60 fps, retorno indevido de rival sem assinatura e persistência de cor em JSON; o render recusa VFR sem sincronismo seguro. A seleção de outro alvo em vídeo importado foi corrigida. São **49 testes de núcleo e 5 UI aprovados no simulador**, não validação em pessoas reais. Um vídeo novo do Histórico foi copiado privadamente do iPhone físico; as seis contagens do índice não são ground truth. Há vídeo de diagnóstico privado com overlays derivados do traço do app; não é mídia autorizada para publicação.
 
+**Teste físico subsequente:** `docs/qa-physical-single-target-2026-09-25.md` registra o mesmo clipe de grupo em Lite/Full no iPhone 15, com menos de 50% dos quadros selecionados em ambos. O vídeo comparativo privado usa traço do aparelho, **não** screen recording. M2 continua reprovado; não confundir um evento automático com repetição correta.
+
 - Mantenha o escopo do produto como contagem experimental de ciclos de agachamento. Não descreva o resultado como correção de forma, segurança ou orientação de saúde.
 - `ios/project.yml` é a fonte da configuração Xcode; gere o `.xcodeproj` com XcodeGen. Abra o `.xcworkspace` criado pelo CocoaPods.
 - `ios/Package.swift` contém somente o núcleo testável em Swift Package Manager. A UI e MediaPipe são compilados pelo workspace.

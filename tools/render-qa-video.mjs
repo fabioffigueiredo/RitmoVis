@@ -10,7 +10,7 @@ function safeText(value) {
   return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
-export function frameOverlaySvg(frame, events, width, height) {
+export function frameOverlaySvg(frame, events, width, height, deviceLabel = 'SIMULADOR IPHONE 15') {
   if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
     throw new Error('Invalid video dimensions');
   }
@@ -27,8 +27,8 @@ export function frameOverlaySvg(frame, events, width, height) {
   const elements = [
     `<rect x="0" y="0" width="${width}" height="${headerHeight}" fill="#07161b" opacity="0.86"/>`,
     narrow
-      ? `<text x="14" y="32" fill="#f7fbfc" font-family="Arial" font-size="26" font-weight="bold">CONTAGEM ${count}</text><text x="14" y="59" fill="#38f2a7" font-family="Arial" font-size="17">${safeText(state)}</text><text x="14" y="82" fill="#b5c6cc" font-family="Arial" font-size="14">SIMULADOR IPHONE 15</text>`
-      : `<text x="14" y="${Math.round(headerHeight * 0.42)}" fill="#f7fbfc" font-family="Arial" font-size="${fontSize}" font-weight="bold">CONTAGEM ${count} · ${safeText(state)}</text><text x="14" y="${Math.round(headerHeight * 0.76)}" fill="#b5c6cc" font-family="Arial" font-size="${Math.max(12, fontSize - 7)}">SIMULADOR IPHONE 15 · TRAÇO REAL DO APP</text>`
+      ? `<text x="14" y="32" fill="#f7fbfc" font-family="Arial" font-size="26" font-weight="bold">CONTAGEM ${count}</text><text x="14" y="59" fill="#38f2a7" font-family="Arial" font-size="17">${safeText(state)}</text><text x="14" y="82" fill="#b5c6cc" font-family="Arial" font-size="14">${safeText(deviceLabel)}</text>`
+      : `<text x="14" y="${Math.round(headerHeight * 0.42)}" fill="#f7fbfc" font-family="Arial" font-size="${fontSize}" font-weight="bold">CONTAGEM ${count} · ${safeText(state)}</text><text x="14" y="${Math.round(headerHeight * 0.76)}" fill="#b5c6cc" font-family="Arial" font-size="${Math.max(12, fontSize - 7)}">${safeText(deviceLabel)} · TRAÇO REAL DO APP</text>`
   ];
   for (const candidate of frame.candidates) {
     const x = Math.round((candidate.centerX - candidate.width / 2) * width);
@@ -91,7 +91,7 @@ export function validateFrameTimeline(trace, sourceTimes, fps) {
   }
 }
 
-export function renderDiagnostic(reportPath, source, output) {
+export function renderDiagnostic(reportPath, source, output, deviceLabel = 'SIMULADOR IPHONE 15') {
   const report = JSON.parse(readFileSync(reportPath, 'utf8'));
   if (report.source !== basename(source)) throw new Error('Report and source filename differ');
   if (!Array.isArray(report.trace) || report.trace.length === 0) throw new Error('Report has no frame trace');
@@ -104,7 +104,7 @@ export function renderDiagnostic(reportPath, source, output) {
   const scratch = mkdtempSync(join(tmpdir(), 'ritmovis-qa-video-'));
   try {
     for (const [index, frame] of report.trace.entries()) {
-      const svg = frameOverlaySvg(frame, report.events ?? [], video.width, video.height);
+      const svg = frameOverlaySvg(frame, report.events ?? [], video.width, video.height, deviceLabel);
       const image = join(scratch, `overlay-${String(index).padStart(6, '0')}.png`);
       writeOverlayPng(svg, image);
     }
@@ -119,10 +119,10 @@ export function renderDiagnostic(reportPath, source, output) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  if (process.argv.length !== 5) {
-    console.error('Usage: node tools/render-qa-video.mjs report.json source.mp4 output.mp4');
+  if (process.argv.length !== 5 && process.argv.length !== 6) {
+    console.error('Usage: node tools/render-qa-video.mjs report.json source.mp4 output.mp4 [device-label]');
     process.exitCode = 2;
   } else {
-    renderDiagnostic(process.argv[2], process.argv[3], process.argv[4]);
+    renderDiagnostic(process.argv[2], process.argv[3], process.argv[4], process.argv[5]);
   }
 }
