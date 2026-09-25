@@ -15,6 +15,8 @@ Este é um registro de contexto, não uma lista de resultados de produto. Para o
 | 24/09 | Experimento Vision | Apple Vision detectou três pessoas em cada quadro no iPhone físico do clipe de grupo; MediaPipe teve candidatos instáveis. Vision não produziu quadro analisável no simulador. |
 | 24/09 | Calibração experimental | referência explícita de quadro em pé permitiu 3 eventos no clipe específico. O alvo foi perdido em 12,52 s. A fórmula e os limites estão no relatório de grupo; não virou padrão. |
 | 24/09 | Revisão e QA | revisão estática Astra não encontrou bloqueador remanescente após correções de escopo/proveniência. 44/44 testes passaram no simulador; UI físico bloqueado por perfil de runner ausente/credencial Xcode inválida. |
+| 25/09 | Novo corpus privado | quatro MOV do proprietário foram catalogados; oito trechos 8-bit foram analisados com MediaPipe no simulador. Múltiplas pessoas/oclusões/pôster revelaram baixa cobertura do rastreador. Sem ground truth suficiente, **nenhum modelo foi retreinado**; veja [relatório](qa-private-videos-2026-09-25.md). |
+| 25/09 | Orientação e QA | o leitor AVFoundation passou a usar composição para aplicar rotação embutida. Fixture vertical rotacionado de 240 quadros passou no simulador sem perdas. Um runner DEBUG de clipes privados gera relatórios de sucesso/erro, sem versionar mídia. 44/44 testes Xcode e 39/39 núcleo passaram; originais MOV 4K não foram validados no iPhone físico. |
 
 ## Incidentes que não devem ser esquecidos
 

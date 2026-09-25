@@ -8,7 +8,7 @@
 ## Leitura mínima, nesta ordem
 
 1. Este arquivo.
-2. [QA de seleção de grupo](qa-group-selection-2026-09-24.md) — única fonte para os resultados mais recentes de M2.
+2. [Corpus pessoal e QA de 25/09](qa-private-videos-2026-09-25.md), depois [QA de seleção de grupo de 24/09](qa-group-selection-2026-09-24.md).
 3. [Roadmap](../roadmap.md) — gates e ordem dos marcos.
 4. [Protocolo M0](m0-annotation-protocol.md) e [fluxo de vídeos](video-qa-workflow.md) — como obter evidência real.
 5. [Decisões](decisions.md) e [arquitetura](architecture.md) — antes de alterar detector, privacidade ou contrato entre plataformas.
@@ -19,7 +19,7 @@
 |---|---|---|
 | iOS | SwiftUI, câmera frontal/traseira, tela de treino, gravação opcional, histórico, replay e importação Arquivos/Fotos | app de desenvolvimento instalado no **iPhone de fabio**; câmera com pareamento ainda é problema ambiental aberto |
 | Uma pessoa | MediaPipe Lite/Full, máquina de estados de agachamento e avaliação de eventos | clipe local de QA contou 4 ciclos; não há corpus anotado suficiente para alegação de precisão |
-| Grupo / M2 | múltiplas poses, seleção explícita, `TargetTracker`, abstenção e `OfflineTargetAnalyzer` | Vision + calibração contou 3 eventos no clipe específico, mas perdeu alvo após 12,52 s; M2 **não passou** |
+| Grupo / M2 | múltiplas poses, seleção explícita, `TargetTracker`, abstenção e `OfflineTargetAnalyzer` | oito trechos pessoais em simulador confirmaram abstenção pré-seleção, mas seleção automática de QA cobriu pouco; M2 **não passou** |
 | Contrato iOS/Android | `fixtures/tracking-v1-synthetic.json` e teste Swift | sintético; Android ainda não foi criado/testado |
 | QA automatizado | 39 testes de núcleo + 5 UI | 44/44 no simulador em 24/09; Vision no simulador não retornou quadros úteis, então esse teste UI usa MediaPipe |
 
@@ -29,7 +29,7 @@
 - Não dizer que reconhece identidade de aluno, professor ou visitante. Caixas e índices são observações por quadro.
 - Não dizer que M2, câmera pareada, beta iOS ou Android estão validados.
 - Não converter 3 eventos no clipe Pexels em precisão, recall ou desempenho geral.
-- Não colocar vídeos, gravações de pessoas, pesos `.task`, renders, Pods, credenciais ou relatórios privados no Git.
+- Não colocar vídeos, gravações de pessoas, poses extraídas, pesos `.task`, renders, Pods, credenciais ou relatórios privados no Git.
 
 ## Arquitetura atual resumida
 
@@ -48,7 +48,7 @@ primeiro passe → cache de poses → toque no alvo → OfflineTargetAnalyzer
 ## Próxima sequência de trabalho — não pular
 
 1. **M0:** anotar manualmente 50+ ciclos autorizados, separar ajuste de aceitação e executar o avaliador. Rodar câmera 10 min no iPhone quando a condição de pareamento estiver definida.
-2. **M2:** anotar o clipe de grupo já usado (alvo, ciclos, oclusões, professor/visitantes) e ao menos dois cenários consentidos de cruzamento. Medir cobertura, troca de identidade, TP/FP/FN e períodos de abstenção. Não ajustar limiar com base em apenas um clipe.
+2. **M2:** anotar os novos vídeos pessoais conforme [esquema M2](m2-annotation-schema.md) (alvo, ciclos, oclusões, professor/visitantes/pôster) e ao menos dois cenários consentidos de cruzamento. Medir cobertura, troca de identidade, TP/FP/FN e períodos de abstenção. Não ajustar limiar com base em um clipe ou em rótulos inferidos pelo detector.
 3. Corrigir/reproduzir o bloqueio de runner UI físico somente se houver conta/perfil Apple válidos. Não alterar contas, senhas ou permissões sem o proprietário.
 4. Só depois discutir promoção de Vision/calibração, beta iOS, novos exercícios ou Android A0.
 
@@ -76,4 +76,4 @@ Para o dispositivo, use o UDID e caminhos já registrados em `docs/qa-group-sele
 
 ## Histórico e dívida relevante
 
-Leia [histórico do projeto](project-history.md). Dívidas abertas: métrica `noPoseFrames` mistura ausência de alvo selecionado e ausência de pessoa; vídeo vertical/transformado é rejeitado; avisos de APIs AVFoundation obsoletas; captura preta quando o iPhone está pareado; runner de UI físico sem perfil; nome/marca RitmoVis não verificados.
+Leia [histórico do projeto](project-history.md). Dívidas abertas: métrica `noPoseFrames` mistura ausência de alvo selecionado e ausência de pessoa; originais MOV 4K/10-bit e desempenho longo ainda não foram testados após suporte a rotação; avisos de APIs AVFoundation obsoletas; captura preta quando o iPhone está pareado; runner de UI físico sem perfil; nome/marca RitmoVis não verificados.

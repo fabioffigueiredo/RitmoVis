@@ -328,7 +328,23 @@ struct ContentView: View {
         guard !didRunQA else { return }
         didRunQA = true
         let args = ProcessInfo.processInfo.arguments
-        if args.contains("--qa-clip-full") { session.model = .full; session.testLicensedClip() }
+        if args.contains(where: { $0.hasPrefix("--qa-private-clip=") }) {
+            let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            for name in ["qa-clip-diagnostics.json", "qa-clip-failure.json"] {
+                try? FileManager.default.removeItem(at: documents.appendingPathComponent(name))
+            }
+            let diagnostics = ["startedAt": ISO8601DateFormatter().string(from: Date()),
+                               "arguments": args.joined(separator: " ")]
+            if let data = try? JSONSerialization.data(withJSONObject: diagnostics) {
+                try? data.write(to: documents.appendingPathComponent("qa-launch.json"), options: .atomic)
+            }
+        }
+        if let privateClip = args.first(where: { $0.hasPrefix("--qa-private-clip=") }) {
+            session.model = args.contains("--qa-model-full") ? .full : .lite
+            session.useVisionForVideo = args.contains("--qa-apple-vision")
+            session.testPrivateClip(named: String(privateClip.dropFirst("--qa-private-clip=".count)))
+        }
+        else if args.contains("--qa-clip-full") { session.model = .full; session.testLicensedClip() }
         else if args.contains("--qa-clip-lite") { session.model = .lite; session.testLicensedClip() }
         else if args.contains("--qa-group-clip") { session.model = .lite; session.testGroupClip() }
         else if args.contains("--qa-group-select") {

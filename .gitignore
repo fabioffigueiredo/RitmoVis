@@ -8,6 +8,10 @@ ios/SquatCounter.xcodeproj/
 ios/SquatCounter.xcworkspace/
 ios/Sources/SquatCounter/Resources/Models/*.task
 ios/Sources/SquatCounter/Resources/*.mp4
+qa-private/
+*.MOV
+*.mov
+*.mp4
 **/*.xcuserstate
 **/xcuserdata/
 video/node_modules/

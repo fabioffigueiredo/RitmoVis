@@ -2,6 +2,7 @@
 
 ## Estado atual — 25/09/2026
 
+- Novo corpus pessoal: quatro vídeos recebidos, oito trechos testados no simulador, todos com 0 contagens sem seleção e 0 quadros descartados; a seleção de alvo teve cobertura baixa e M2 segue reprovado. Ver [relatório específico](qa-private-videos-2026-09-25.md). A leitura vertical/rotacionada foi corrigida e passou em fixture de simulador, mas não nos MOV 4K no iPhone físico. Não houve treinamento de novos pesos. Após a alteração, **39/39 testes de núcleo e 44/44 da suíte Xcode** passaram no simulador.
 - Referência para continuidade: [handoff para Claude](claude-handoff.md), [histórico](project-history.md) e [QA M2](qa-group-selection-2026-09-24.md).
 - Última suíte de simulador: **44/44 aprovados** em 24/09/2026 (39 núcleo e 5 UI). O resultado inclui UI de seleção via MediaPipe; Apple Vision retornou “Nenhum quadro analisável” no simulador e foi medido apenas no iPhone físico.
 - Último experimento físico de grupo: iPhone de fabio, Vision + referência em pé, 3 eventos e 313/430 quadros acompanhados. O alvo foi perdido depois; não existe anotação humana independente completa. **M2 não está validado.**

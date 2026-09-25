@@ -2,6 +2,8 @@
 
 **Comece por `docs/claude-handoff.md`.** Ele contém estado atual, próxima sequência, comandos e limites. Histórico de decisões/execuções: `docs/project-history.md`. A seleção offline usa `OfflineTargetAnalyzer` sobre poses em cache e preserva AVPlayer; Vision/calibração em pé são experimentos de importação, não validação de técnica.
 
+**Novo corpus privado (25/09):** consulte `docs/qa-private-videos-2026-09-25.md` antes de alterar pose/rastreamento. Quatro MOV pessoais foram analisados em oito trechos no simulador com MediaPipe; **nenhum peso foi retreinado** nem existe ground truth de identidade/repetições. O importador passou a aceitar vídeo vertical/rotacionado em fixture, mas originais 4K/10-bit ainda exigem iPhone físico. Dados e relatórios ficam fora do Git. Apple Vision falha ao inicializar no simulador; não usar esse ambiente para comparar sua qualidade.
+
 - Mantenha o escopo do produto como contagem experimental de ciclos de agachamento. Não descreva o resultado como correção de forma, segurança ou orientação de saúde.
 - `ios/project.yml` é a fonte da configuração Xcode; gere o `.xcodeproj` com XcodeGen. Abra o `.xcworkspace` criado pelo CocoaPods.
 - `ios/Package.swift` contém somente o núcleo testável em Swift Package Manager. A UI e MediaPipe são compilados pelo workspace.

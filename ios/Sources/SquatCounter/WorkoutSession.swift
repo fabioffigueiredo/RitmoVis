@@ -548,6 +548,23 @@ private final class CaptureSessionBox: @unchecked Sendable {
         analyzeVideo(at: url)
     }
 
+    #if DEBUG
+    func testPrivateClip(named filename: String) {
+        guard !filename.isEmpty, URL(fileURLWithPath: filename).lastPathComponent == filename,
+              ["mp4", "mov"].contains(URL(fileURLWithPath: filename).pathExtension.lowercased()) else {
+            phaseText = "Nome de vídeo de QA inválido"
+            return
+        }
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let url = documents.appendingPathComponent(filename)
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            phaseText = "Vídeo de QA ausente no aparelho"
+            return
+        }
+        analyzeVideo(at: url)
+    }
+    #endif
+
     func replay() {
         guard let videoPlayer else { return }
         repetitions = 0
@@ -696,11 +713,20 @@ private final class CaptureSessionBox: @unchecked Sendable {
     }
 
     #if DEBUG
+    private func saveQAClipFailureIfRequested(source: URL, reason: String) {
+        guard ProcessInfo.processInfo.arguments.contains(where: { $0.hasPrefix("--qa-private-clip=") }) else { return }
+        let report = ["source": source.lastPathComponent, "error": reason]
+        guard let data = try? JSONSerialization.data(withJSONObject: report) else { return }
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        try? data.write(to: documents.appendingPathComponent("qa-clip-failure.json"), options: .atomic)
+    }
+
     private func saveQAClipReportIfRequested(source: URL, results: [TimedPose],
                                              selectionRequested: Bool) {
         let args = ProcessInfo.processInfo.arguments
         guard args.contains("--qa-clip-lite") || args.contains("--qa-clip-full")
-                || args.contains("--qa-group-clip") || args.contains("--qa-group-select") else { return }
+                || args.contains("--qa-group-clip") || args.contains("--qa-group-select")
+                || args.contains(where: { $0.hasPrefix("--qa-private-clip=") }) else { return }
         let report = QAClipReport(recordedAt: Date(), model: videoBackendUsed,
                                   calibration: videoCalibrationUsed,
                                   source: source.lastPathComponent, repetitions: events.count,
@@ -784,11 +810,17 @@ private final class CaptureSessionBox: @unchecked Sendable {
             if let errorMessage {
                 self.isAnalyzing = false
                 self.phaseText = "Análise incompleta — nenhum resultado publicado: \(errorMessage)"
+                #if DEBUG
+                self.saveQAClipFailureIfRequested(source: videoURL, reason: errorMessage)
+                #endif
                 return
             }
             guard !rawResults.isEmpty else {
                 self.isAnalyzing = false
                 self.phaseText = "Nenhum quadro analisável"
+                #if DEBUG
+                self.saveQAClipFailureIfRequested(source: videoURL, reason: "Nenhum quadro analisável")
+                #endif
                 return
             }
             let groupDetected = ImportedClipPolicy.requiresSelection(
@@ -829,11 +861,17 @@ private final class CaptureSessionBox: @unchecked Sendable {
                 self.apply(first)
             } else { player.play() }
             #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--qa-group-select"),
+            let qaArguments = ProcessInfo.processInfo.arguments
+            if qaArguments.contains("--qa-group-select"),
                groupDetected,
                let sample = results.first(where: { !$0.candidates.isEmpty }),
-               let center = sample.candidates.min(by: {
-                   abs($0.centerX - 0.5) < abs($1.centerX - 0.5)
+               let center = sample.candidates.min(by: { lhs, rhs in
+                   let requestedX = qaArguments.first(where: { $0.hasPrefix("--qa-target-x=") })
+                       .flatMap { Double($0.dropFirst("--qa-target-x=".count)) } ?? 0.5
+                   let requestedY = qaArguments.first(where: { $0.hasPrefix("--qa-target-y=") })
+                       .flatMap { Double($0.dropFirst("--qa-target-y=".count)) } ?? 0.5
+                   return hypot(lhs.centerX - requestedX, lhs.centerY - requestedY)
+                       < hypot(rhs.centerX - requestedX, rhs.centerY - requestedY)
                }) {
                 Task { @MainActor in
                     self.currentVideoObservationPTS = sample.pts
@@ -1091,6 +1129,7 @@ private final class InferenceWorker: @unchecked Sendable {
     private var counter = SquatCounter()
     private var processed = 0
     private var dropped = 0
+    private var firstDetectionError: String?
     private var noPose = 0
     private var frameHealth = CameraFrameHealth()
     private var sortedLatencies: [Double] = []
@@ -1170,16 +1209,20 @@ private final class InferenceWorker: @unchecked Sendable {
         guard let track = asset.tracks(withMediaType: .video).first else {
             finish([], error: "Vídeo sem faixa de imagem"); return
         }
-        guard track.preferredTransform.isIdentity, track.naturalSize.width >= track.naturalSize.height else {
-            finish([], error: "Nesta versão, importe vídeo horizontal sem rotação embutida")
-            return
-        }
         guard let reader = try? AVAssetReader(asset: asset) else {
             finish([], error: "Não foi possível ler o vídeo"); return
         }
-        let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
-        ])
+        let pixelSettings: [String: Any] = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+        let output: AVAssetReaderOutput
+        if track.preferredTransform.isIdentity {
+            output = AVAssetReaderTrackOutput(track: track, outputSettings: pixelSettings)
+        } else {
+            // A reprodução aplica a matriz de rotação automaticamente; os quadros de
+            // AVAssetReaderTrackOutput não. Compor aqui mantém pose e replay alinhados.
+            let oriented = AVAssetReaderVideoCompositionOutput(videoTracks: [track], videoSettings: pixelSettings)
+            oriented.videoComposition = AVMutableVideoComposition(propertiesOf: asset)
+            output = oriented
+        }
         guard reader.canAdd(output) else { finish([], error: "Formato de vídeo incompatível"); return }
         reader.add(output)
         lock.lock(); activeReader = reader; lock.unlock()
@@ -1194,7 +1237,7 @@ private final class InferenceWorker: @unchecked Sendable {
             finish(results, error: reader.error?.localizedDescription ?? "Leitura do vídeo interrompida")
             return
         }
-        finish(results, error: nil)
+        finish(results, error: results.isEmpty ? firstDetectionError : nil)
     }
 
     private func finish(_ results: [TimedPose], error: String?) {
@@ -1262,6 +1305,7 @@ private final class InferenceWorker: @unchecked Sendable {
                              poseOptions: batch.poses)
         } catch {
             dropped += 1
+            if firstDetectionError == nil { firstDetectionError = error.localizedDescription }
             return nil
         }
     }
