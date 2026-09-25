@@ -28,9 +28,9 @@
 
 **Interfaces:** Private reports outside Git, public aggregate QA status inside Git.
 
-- [ ] Re-run supported simulator clip diagnostics on the supplied videos; separate detector absence, tracker uncertainty and no count.
-- [ ] Compare baseline and revised behavior on the same clips, without calling automated output ground truth.
-- [ ] Run full core tests and iOS simulator tests; record observed results and physical-device gaps.
+- [x] Re-run supported simulator clip diagnostics on the supplied videos; separate detector absence, tracker uncertainty and no count.
+- [x] Compare baseline and revised behavior on the same clips, without calling automated output ground truth.
+- [x] Run full core tests and iOS simulator tests; record observed results and physical-device gaps.
 
 ### Task 4: Validation video and handoff
 

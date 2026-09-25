@@ -71,6 +71,7 @@ private struct QAClipReport: Codable {
     let selectedFrames: Int
     let uncertainFrames: Int
     let reselectionFrames: Int
+    let diagnostics: ClipDiagnosticSummary
     let trace: [QATrackingFrame]?
 }
 
@@ -758,6 +759,11 @@ private final class CaptureSessionBox: @unchecked Sendable {
                                   }.count,
                                   uncertainFrames: results.filter { $0.tracking == .uncertain }.count,
                                   reselectionFrames: results.filter { $0.tracking == .reselectionRequired }.count,
+                                  diagnostics: ClipDiagnostics.summarize(results.map {
+                                    ClipFrameDiagnostic(candidateCount: $0.candidates.count,
+                                                        decision: $0.tracking,
+                                                        hasKneeAngle: $0.frame.kneeAngle != nil)
+                                  }),
                                   trace: args.contains("--qa-group-select") ? results.map {
                                     QATrackingFrame(pts: $0.pts, candidates: $0.candidates,
                                                     decision: String(describing: $0.tracking),
