@@ -1,9 +1,11 @@
 # Handoff para Claude — RitmoVis
 
-**Atualizado em:** 25/09/2026
+**Atualizado em:** 26/09/2026
 
 **Branch de trabalho:** `feat/m2-android-a0`
 **Objetivo imediato:** tornar a seleção de uma pessoa em vídeo de grupo mensurável e segura antes de ampliar exercícios, distribuir beta ou iniciar Android.
+
+**Sessão de testes do proprietário em 26/09:** [monitoramento de importações](monitoring-imports.md). O build Debug com `--qa-monitor-imports` registra início, falhas/recusas e relatórios separados por escolha, em `Documents/QAMonitoring`, somente localmente. Uma automação desta conversa acompanha os JSON a cada 5 minutos durante o dia. Não interromper a sessão do usuário para reinstalar/trocar modelo. Xcode está no workspace atual e no destino físico; interface do Device Hub continua indisponível por timeout, mas o contêiner do iPhone é acessível. Preparação passou em build físico e 54 testes de núcleo; clipe de referência comprovou registro de 743 quadros/4 eventos, sem validar acurácia.
 
 **Atualização mais recente (25/09, vídeo de tela do proprietário):** [pôster e perda do alvo](qa-poster-and-target-2026-09-25.md). O alvo agora usa geometria do tronco quando disponível; seleção em vídeo importado de grupo filtra automaticamente poses sem joelho analisável em uma janela temporal. No iPhone físico, o pôster observado foi recusado, a cobertura do homem de preto subiu de 21 para 428/866 quadros e o clipe da atleta à direita manteve 692/693 quadros e 2 eventos. Testes: 54 núcleo + 5 UI. **Não tratar isto como prova de identidade, anti-foto universal ou precisão de contagem**. O próximo passo é rotular trechos de cruzamento e usar sessão independente como aceitação.
 

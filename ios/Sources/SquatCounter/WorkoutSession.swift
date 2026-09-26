@@ -56,6 +56,8 @@ private struct QACameraReport: Codable {
 }
 
 private struct QAClipReport: Codable {
+    let analysisID: String
+    let stage: String
     let recordedAt: Date
     let model: String
     let calibration: String
@@ -377,6 +379,10 @@ private final class CaptureSessionBox: @unchecked Sendable {
                                                    selectedFrame: selectedFrame,
                                                    candidateIndex: candidate.index) else {
             videoAnalysisNotice = "Pose insuficiente para analisar agachamento neste trecho. Avance o vídeo ou escolha outro aluno."
+            #if DEBUG
+            saveMonitoringEvent(stage: "selection-refused", source: url,
+                                reason: videoAnalysisNotice, videoTime: timestamp)
+            #endif
             return
         }
         player.pause()
@@ -388,6 +394,10 @@ private final class CaptureSessionBox: @unchecked Sendable {
                   let calibrated = OfflineTargetAnalyzer.calibratedCounter(standingAngle: angle,
                     confidence: cached[selectedFrame].poseOptions[candidate.index].confidence) else {
                 videoAnalysisNotice = "Referência insuficiente. Avance para um quadro em pé, com joelho visível, ou desative a calibração."
+                #if DEBUG
+                saveMonitoringEvent(stage: "calibration-refused", source: url,
+                                    reason: videoAnalysisNotice, videoTime: timestamp)
+                #endif
                 return
             }
             counter = calibrated
@@ -397,6 +407,9 @@ private final class CaptureSessionBox: @unchecked Sendable {
         let id = token
         isAnalyzing = true
         videoAnalysisNotice = "Analisando a pessoa escolhida…"
+        #if DEBUG
+        saveMonitoringEvent(stage: "analyzing-selection", source: url, videoTime: timestamp)
+        #endif
         Task { [weak self] in
             let results = await Task.detached(priority: .userInitiated) {
                 Self.analyzeCachedPoses(cached, selectedFrame: selectedFrame, candidateIndex: candidate.index,
@@ -485,6 +498,11 @@ private final class CaptureSessionBox: @unchecked Sendable {
 
     func stop() {
         #if DEBUG
+        if isAnalyzing {
+            saveMonitoringEvent(stage: "analysis-cancelled", source: currentAnalyzedVideoURL)
+        }
+        #endif
+        #if DEBUG
         saveQACameraReportIfRequested()
         #endif
         let wasCameraActive = isCameraActive
@@ -537,8 +555,12 @@ private final class CaptureSessionBox: @unchecked Sendable {
     }
 
     func importVideo(_ item: PhotosPickerItem?) async {
-        guard let item, let movie = try? await item.loadTransferable(type: SelectedVideo.self) else {
+        guard let item else { return }
+        guard let movie = try? await item.loadTransferable(type: SelectedVideo.self) else {
             phaseText = "Vídeo não disponível"
+            #if DEBUG
+            saveMonitoringEvent(stage: "import-failed", source: nil, reason: phaseText)
+            #endif
             return
         }
         analyzeVideo(at: movie.url)
@@ -556,6 +578,9 @@ private final class CaptureSessionBox: @unchecked Sendable {
             analyzeVideo(at: copy)
         } catch {
             phaseText = "Não foi possível abrir o vídeo: \(error.localizedDescription)"
+            #if DEBUG
+            saveMonitoringEvent(stage: "import-failed", source: selectedURL, reason: phaseText)
+            #endif
         }
     }
 
@@ -673,10 +698,16 @@ private final class CaptureSessionBox: @unchecked Sendable {
         phaseText = "Analisando vídeo antes da reprodução"
         do {
             try prepareWorker(id: id, videoURL: url)
+            #if DEBUG
+            saveMonitoringEvent(stage: "analyzing-video", source: url)
+            #endif
             worker?.analyzeVideo(at: url)
         } catch {
             isAnalyzing = false
             phaseText = error.localizedDescription
+            #if DEBUG
+            saveQAClipFailureIfRequested(source: url, reason: error.localizedDescription)
+            #endif
         }
     }
 
@@ -745,8 +776,37 @@ private final class CaptureSessionBox: @unchecked Sendable {
     }
 
     #if DEBUG
+    private var importMonitoringEnabled: Bool {
+        ProcessInfo.processInfo.arguments.contains("--qa-monitor-imports")
+    }
+
+    /// Monitoring is explicitly enabled for this development session; reports stay local.
+    private func saveMonitoringData(_ data: Data) throws {
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let directory = documents.appendingPathComponent("QAMonitoring", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try data.write(to: directory.appendingPathComponent("\(UUID().uuidString).json"), options: .atomic)
+        try data.write(to: directory.appendingPathComponent("latest.json"), options: .atomic)
+    }
+
+    private func saveMonitoringEvent(stage: String, source: URL?, reason: String? = nil,
+                                     videoTime: Double? = nil) {
+        guard importMonitoringEnabled else { return }
+        var event = ["analysisID": token.uuidString, "stage": stage,
+                     "recordedAtISO8601": ISO8601DateFormatter().string(from: Date()),
+                     "model": videoBackendUsed]
+        if let source { event["source"] = source.lastPathComponent }
+        if let reason { event["reason"] = reason }
+        if let videoTime { event["videoTime"] = String(videoTime) }
+        do { try saveMonitoringData(JSONSerialization.data(withJSONObject: event)) }
+        catch { print("Import monitoring event could not be saved: \(error.localizedDescription)") }
+    }
+
     private func saveQAClipFailureIfRequested(source: URL, reason: String) {
-        guard ProcessInfo.processInfo.arguments.contains(where: { $0.hasPrefix("--qa-private-clip=") }) else { return }
+        saveMonitoringEvent(stage: "analysis-failed", source: source, reason: reason)
+        guard importMonitoringEnabled || ProcessInfo.processInfo.arguments.contains(where: {
+            $0.hasPrefix("--qa-private-clip=")
+        }) else { return }
         let report = ["source": source.lastPathComponent, "error": reason]
         guard let data = try? JSONSerialization.data(withJSONObject: report) else { return }
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -758,8 +818,11 @@ private final class CaptureSessionBox: @unchecked Sendable {
         let args = ProcessInfo.processInfo.arguments
         guard args.contains("--qa-clip-lite") || args.contains("--qa-clip-full")
                 || args.contains("--qa-group-clip") || args.contains("--qa-group-select")
+                || importMonitoringEnabled
                 || args.contains(where: { $0.hasPrefix("--qa-private-clip=") }) else { return }
-        let report = QAClipReport(recordedAt: Date(), model: videoBackendUsed,
+        let report = QAClipReport(analysisID: token.uuidString,
+                                  stage: selectionRequested ? "selection-completed" : "first-pass-completed",
+                                  recordedAt: Date(), model: videoBackendUsed,
                                   calibration: videoCalibrationUsed,
                                   source: source.lastPathComponent, repetitions: events.count,
                                   events: events, metrics: results.last?.metrics ?? metrics,
@@ -779,7 +842,7 @@ private final class CaptureSessionBox: @unchecked Sendable {
                                                         decision: $0.tracking,
                                                         hasKneeAngle: $0.frame.kneeAngle != nil)
                                   }),
-                                  trace: args.contains("--qa-group-select") ? results.map {
+                                  trace: args.contains("--qa-group-select") || importMonitoringEnabled ? results.map {
                                     QATrackingFrame(pts: $0.pts, candidates: $0.candidates,
                                                     decision: String(describing: $0.tracking),
                                                     angle: $0.frame.kneeAngle,
@@ -795,8 +858,10 @@ private final class CaptureSessionBox: @unchecked Sendable {
                                   } : nil)
         do {
             let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            try JSONEncoder().encode(report).write(
+            let data = try JSONEncoder().encode(report)
+            try data.write(
                 to: documents.appendingPathComponent("qa-clip-diagnostics.json"), options: .atomic)
+            if importMonitoringEnabled { try saveMonitoringData(data) }
         } catch {
             print("QA clip diagnostics could not be saved: \(error.localizedDescription)")
         }

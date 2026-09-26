@@ -4,6 +4,7 @@ Este é um registro de contexto, não uma lista de resultados de produto. Para o
 
 | Data | Marco | Resultado e preservação de contexto |
 |---|---|---|
+| 26/09/2026 | Monitoramento de importações | build Debug passou a preservar eventos e relatórios por análise/escolha quando iniciado com `--qa-monitor-imports`. Xcode aberto no workspace atual e destino físico corrigido; pareamento refeito e contêiner acessível. 54 testes de núcleo e build físico aprovados; coleta verificada em clipe de referência. Acompanhamento periódico de JSON nesta conversa; interface do Device Hub excedeu timeout. Ver [procedimento](monitoring-imports.md). |
 | 23/09/2026 | Extração | protótipos `squat-counter-ios` e `squat-counter-video` foram copiados para o repositório independente. Originais não foram removidos. |
 | 23/09 | Editorial | composições 16:9 e 4:5 foram preservadas como código Remotion; mídia e renders ficaram fora do Git. A publicação não foi automatizada. |
 | 23/09 | M0 | avaliador de repetições anotadas e fixture sintético foram adicionados. O avaliador foi testado; corpus de pessoas reais continua pendente. |

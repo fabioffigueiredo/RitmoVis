@@ -1,5 +1,9 @@
 # Estado de QA — RitmoVis
 
+## Monitoramento de testes — 26/09/2026
+
+O proprietário vai importar vídeos de seu telefone para testar o app. Foi adicionado diagnóstico ativado explicitamente na sessão Debug para preservar cada análise/seleção, erro e recusa em `Documents/QAMonitoring`. Build físico e 54 testes de núcleo aprovados; clipe de referência no iPhone gerou evento de início e relatório completo separados. Ver [procedimento e limites](monitoring-imports.md). Isto prepara acompanhamento; não representa aprovação dos novos vídeos do usuário.
+
 ## Estado atual — 25/09/2026
 
 - **Vídeo de tela com pôster e perda do alvo:** [diagnóstico e reensaio físico de 25/09](qa-poster-and-target-2026-09-25.md). Filtro automático recusou a seleção do pôster observado; no clipe de turma a cobertura subiu de 21 para 428/866 quadros, mas 309 permanecem incertos. 54 testes de núcleo e 59 testes Xcode (incluindo 5 UI) passaram. A identidade correta ainda não foi anotada independentemente; **M2 continua não validado**.
