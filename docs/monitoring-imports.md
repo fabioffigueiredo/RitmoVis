@@ -36,3 +36,9 @@ Copiar cada arquivo novo com `device copy from`, fonte `Documents/QAMonitoring/<
 ## Preparação verificada
 
 Build assinado iOS aprovado e 54/54 testes do núcleo aprovados em 26/09. No iPhone físico, o clipe de referência com `--qa-monitor-imports --qa-clip-lite` criou evento de início e relatório completo em arquivos diferentes. O relatório registrou 743 quadros e 4 eventos; isto verifica a coleta, não precisão geral. Logs locais: `/tmp/ritmovis-import-monitor-build.log` e `/tmp/ritmovis-import-monitor-core.log`.
+
+## Primeiro retorno do proprietário
+
+Os primeiros vídeos importados pelo usuário geraram relatórios normalmente. No teste `DA3B8AD4-333B-4DD5-A00E-5F0D2BE4A37E`, MediaPipe Lite em modo vídeo, o proprietário confirmou que escolheu o aluno à frente de tênis branco. A seleção aos 2,1667 s acompanhou 24 quadros, teve 5 incertos e 222 que exigiram reseleção; 0 eventos. Última seleção confirmada: 3,0683 s. Aos 3,1017 s aparecem dois candidatos sobre a região do mesmo aluno, com centros do tronco separados por cerca de 0,015 em coordenadas normalizadas; a ambiguidade invalidou a seleção, e aos 3,135 s o estado virou `reselectionRequired`. A inspeção da imagem sugere pose duplicada do detector, mas não foi feita ainda a comparação com outro backend. Uma segunda escolha aos 9,97 s acompanhou somente os 17 quadros restantes; este trecho não serve para avaliar um ciclo completo.
+
+Foi solicitado ao proprietário repetir o mesmo vídeo com Apple Vision, escolhendo o mesmo aluno perto de 2 s e deixando o trecho terminar sem reseleção. Não instalar outra versão enquanto esse comparativo estiver em andamento. A contagem manual completa ainda não foi informada/validada. Mídia e relatórios desse teste estão na área privada; nenhum peso ou regra do rastreador foi alterado durante a sessão.
