@@ -46,7 +46,10 @@ final class PoseDetector {
                 (.leftShoulder, 11), (.rightShoulder, 12), (.leftElbow, 13), (.rightElbow, 14),
                 (.leftWrist, 15), (.rightWrist, 16), (.leftHip, 23), (.rightHip, 24),
                 (.leftKnee, 25), (.rightKnee, 26), (.leftAnkle, 27), (.rightAnkle, 28)]
-            let visionPoints = try (visionRequest.results ?? []).prefix(4).map { observation in
+            // Vision has already inferred every observation. Its array order is not
+            // an identity or a priority for our selected athlete; truncation can
+            // drop that athlete mid-squat when their position in the array changes.
+            let visionPoints = try (visionRequest.results ?? []).map { observation in
                 let joints = try observation.recognizedPoints(.all)
                 var points = Array(repeating: PosePoint(x: 0, y: 0, visibility: 0, presence: 0), count: 33)
                 for (joint, index) in mapping {

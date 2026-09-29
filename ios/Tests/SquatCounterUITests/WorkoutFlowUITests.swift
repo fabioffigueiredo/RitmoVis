@@ -10,6 +10,13 @@ final class WorkoutFlowUITests: XCTestCase {
         app.launch()
         let select = app.buttons["Selecionar pessoa no quadro"].firstMatch
         XCTAssertTrue(select.waitForExistence(timeout: 120))
+        let eligibleCount = app.staticTexts["eligibleVideoPeopleCount"]
+        XCTAssertTrue(eligibleCount.exists)
+        XCTAssertTrue(eligibleCount.label.hasPrefix("Pessoas aptas à análise no quadro:"))
+        let explanation = app.staticTexts["selectionEligibilityExplanation"]
+        XCTAssertTrue(explanation.exists)
+        XCTAssertTrue(explanation.label.contains("joelho"))
+        XCTAssertTrue(explanation.label.contains("enquadramento"))
         for _ in 0..<5 where !select.isHittable { app.swipeUp() }
         XCTAssertTrue(select.isHittable)
         select.tap()
@@ -31,6 +38,10 @@ final class WorkoutFlowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Seu treino, em foco."].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Iniciar treino"].exists)
         XCTAssertTrue(app.staticTexts["Analisar vídeo recebido"].exists)
+        let modeTiming = app.staticTexts["importModeTimingNotice"]
+        XCTAssertTrue(modeTiming.exists)
+        XCTAssertTrue(modeTiming.label.contains("antes de importar"))
+        XCTAssertTrue(modeTiming.label.contains("importe novamente"))
         XCTAssertTrue(app.buttons["Arquivos"].exists)
         XCTAssertTrue(app.buttons["Fotos"].exists)
         XCTAssertTrue(app.switches["Análise quadro a quadro para grupos"].exists)

@@ -60,6 +60,17 @@ public struct SquatCounter: Sendable {
         return nil
     }
 
+    /// Pauses angle evaluation while the same person is still selected. A missing angle
+    /// cannot advance a phase, and a long absence invalidates the partial cycle.
+    public mutating func recordMissingMeasurement(at timestamp: TimeInterval) {
+        guard timestamp.isFinite, let lastValidTimestamp,
+              timestamp >= lastValidTimestamp else { return }
+        if timestamp - lastValidTimestamp >= occlusionTimeout {
+            bottomConfidence = 0
+            transition(to: .trackingLost, at: timestamp)
+        }
+    }
+
     /// Invalidates an in-progress repetition when the selected person's identity is uncertain.
     /// Completed repetitions remain, but a fresh standing observation is required to resume.
     public mutating func interruptTracking(at timestamp: TimeInterval) {

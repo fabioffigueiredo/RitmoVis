@@ -1,9 +1,13 @@
 # Handoff para Claude — RitmoVis
 
-**Atualizado em:** 26/09/2026
+**Atualizado em:** 29/09/2026
 
 **Branch de trabalho:** `feat/m2-android-a0`
 **Objetivo imediato:** tornar a seleção de uma pessoa em vídeo de grupo mensurável e segura antes de ampliar exercícios, distribuir beta ou iniciar Android.
+
+**Correção mais recente — 29/09:** [relatório, causas, testes e limites](qa-tracking-correction-2026-09-29.md). A truncagem Vision em quatro poses foi removida; o rastreador conserva contexto temporário dos rivais e abstém-se em associações ambíguas; ausência breve do ângulo não descarta o ciclo se a identidade continua confirmada. A revisão Astra reproduziu dois defeitos da primeira implementação e confirmou suas correções. Build físico e 66 testes de núcleo + 5 UI passaram; 15 testes Node passaram. No build final instalado no iPhone, o caso original passou nos nove quadros rotulados, com 306/316 decisões `selected` e três eventos automáticos. **Não é validação geral de identidade/contagem, nem de MediaPipe.** Ativar Vision antes de reimportar para reproduzir o ensaio. A automação antiga está pausada e a sessão manual encerrada; a restrição histórica abaixo de não reinstalar não se aplica aos ensaios posteriores autorizados.
+
+**Achado crítico de 26/09:** o reensaio manual com Apple Vision confirmou troca do aluno de tênis branco pelo colega à direita aos **1,1 s**, após ausência curta do alvo entre os candidatos. Veja [evidência e limites](monitoring-imports.md#reensaio-vision--troca-de-pessoa-confirmada-2609). Decisão `selected` não comprova identidade; M2 permanece reprovado mesmo quando a cobertura aparente é alta. Foi feita somente investigação/documentação, sem alterar o app durante os testes. Próxima regressão deve cobrir essa troca e a distinção entre pose detectada e elegibilidade de seleção, que hoje pode esconder alunos agachados.
 
 **Sessão de testes do proprietário em 26/09:** [monitoramento de importações](monitoring-imports.md). O build Debug com `--qa-monitor-imports` registra início, falhas/recusas e relatórios separados por escolha, em `Documents/QAMonitoring`, somente localmente. Uma automação desta conversa acompanha os JSON a cada 5 minutos durante o dia. Não interromper a sessão do usuário para reinstalar/trocar modelo. Xcode está no workspace atual e no destino físico; interface do Device Hub continua indisponível por timeout, mas o contêiner do iPhone é acessível. Preparação passou em build físico e 54 testes de núcleo; clipe de referência comprovou registro de 743 quadros/4 eventos, sem validar acurácia.
 
@@ -29,7 +33,7 @@
 | Uma pessoa | MediaPipe Lite/Full, máquina de estados de agachamento e avaliação de eventos | clipe local de QA contou 4 ciclos; não há corpus anotado suficiente para alegação de precisão |
 | Grupo / M2 | múltiplas poses, seleção explícita, `TargetTracker` com geometria + aparência temporária, abstenção e `OfflineTargetAnalyzer` | reensaio de cinco seleções privadas no simulador; cobertura melhorou em algumas e não em outras; ainda não há verdade humana de ID; M2 **não passou** |
 | Contrato iOS/Android | `fixtures/tracking-v1-synthetic.json` e teste Swift | sintético; Android ainda não foi criado/testado |
-| QA automatizado | 49 testes de núcleo + 5 UI | 54/54 no simulador em 25/09; Vision no simulador não retornou quadros úteis, então esse teste UI usa MediaPipe |
+| QA automatizado | 66 testes de núcleo + 5 UI + 15 Node | 71/71 Xcode no simulador em 29/09 e 15/15 Node; UI de grupo usa MediaPipe, Vision é ensaiado no iPhone físico |
 
 ## O que não afirmar
 
@@ -56,7 +60,7 @@ primeiro passe → cache de poses → toque no alvo → OfflineTargetAnalyzer
 ## Próxima sequência de trabalho — não pular
 
 1. **M0:** anotar manualmente 50+ ciclos autorizados, separar ajuste de aceitação e executar o avaliador. Rodar câmera 10 min no iPhone quando a condição de pareamento estiver definida.
-2. **M2:** anotar os novos vídeos pessoais conforme [esquema M2](m2-annotation-schema.md) (alvo, ciclos, oclusões, professor/visitantes/pôster) e ao menos dois cenários consentidos de cruzamento. Medir cobertura, troca de identidade, TP/FP/FN e períodos de abstenção. Não ajustar limiar com base em um clipe ou em rótulos inferidos pelo detector.
+2. **M2:** ampliar as nove marcações da regressão de 29/09 para os clipes completos, conforme [esquema M2](m2-annotation-schema.md), e obter sessão independente com ao menos dois cenários consentidos de cruzamento. Medir cobertura, troca de identidade, TP/FP/FN e períodos de abstenção. Não usar o corpus de ajuste como holdout nem estados `selected` como verdade humana. Repetir MediaPipe no último patch antes de alegar melhoria nesse backend.
 3. Corrigir/reproduzir o bloqueio de runner UI físico somente se houver conta/perfil Apple válidos. Não alterar contas, senhas ou permissões sem o proprietário.
 4. Só depois discutir promoção de Vision/calibração, beta iOS, novos exercícios ou Android A0.
 

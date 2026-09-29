@@ -26,7 +26,7 @@ final class OfflineTargetAnalyzerTests: XCTestCase {
         }
         XCTAssertEqual(OfflineTargetAnalyzer.analyze(frames, selectedFrame: 0, candidateIndex: 0, counter: counter).last?.count, 0)
     }
-    private func person(_ index: Int, _ x: Double, _ angle: Double) -> VideoPoseObservation {
+    private func person(_ index: Int, _ x: Double, _ angle: Double?) -> VideoPoseObservation {
         .init(candidate: .init(index: index, centerX: x, centerY: 0.5,
                                width: 0.2, height: 0.6, confidence: 0.9),
               kneeAngle: angle, confidence: 0.9)
@@ -51,5 +51,63 @@ final class OfflineTargetAnalyzerTests: XCTestCase {
         let results = OfflineTargetAnalyzer.analyze(frames, selectedFrame: 0, candidateIndex: 9)
         XCTAssertEqual(results.first?.decision, .noSelection)
         XCTAssertEqual(results.first?.count, 0)
+    }
+
+    func testShortMissingKneeMeasurementKeepsObservedCycleWhenIdentityStaysSelected() {
+        let samples: [(TimeInterval, Double?)] = [
+            (0, 170), (0.2, 145), (0.4, 100), (0.5, nil), (0.6, 120), (0.8, 165)
+        ]
+        let frames = samples.map { time, angle in
+            VideoPoseFrame(timestamp: time, observations: [person(0, 0.3, angle)])
+        }
+        let results = OfflineTargetAnalyzer.analyze(frames, selectedFrame: 0, candidateIndex: 0)
+        XCTAssertEqual(results[3].decision, .selected(index: 0))
+        XCTAssertNil(results[3].event)
+        XCTAssertEqual(results[3].phase, .bottom)
+        XCTAssertEqual(results.last?.count, 1)
+        XCTAssertEqual(results.compactMap(\.event).count, 1)
+    }
+
+    func testLongMissingKneeMeasurementInvalidatesPartialCycle() {
+        let samples: [(TimeInterval, Double?)] = [
+            (0, 170), (0.2, 145), (0.4, 100),
+            (0.5, nil), (0.6, nil), (0.7, nil), (0.8, nil), (0.9, nil),
+            (1.1, 120), (1.3, 165)
+        ]
+        let frames = samples.map { time, angle in
+            VideoPoseFrame(timestamp: time, observations: [person(0, 0.3, angle)])
+        }
+        let results = OfflineTargetAnalyzer.analyze(frames, selectedFrame: 0, candidateIndex: 0)
+        XCTAssertEqual(results[7].decision, .selected(index: 0))
+        XCTAssertEqual(results[7].phase, .trackingLost)
+        XCTAssertEqual(results.last?.count, 0)
+    }
+
+    func testUncertainIdentityImmediatelyInvalidatesPartialCycle() {
+        let frames = [
+            VideoPoseFrame(timestamp: 0, observations: [person(0, 0.3, 170)]),
+            VideoPoseFrame(timestamp: 0.2, observations: [person(0, 0.3, 145)]),
+            VideoPoseFrame(timestamp: 0.4, observations: [person(0, 0.3, 100)]),
+            VideoPoseFrame(timestamp: 0.5, observations: []),
+            VideoPoseFrame(timestamp: 0.6, observations: [person(1, 0.3, 120)]),
+            VideoPoseFrame(timestamp: 0.8, observations: [person(0, 0.3, 165)])
+        ]
+        let results = OfflineTargetAnalyzer.analyze(frames, selectedFrame: 0, candidateIndex: 0)
+        XCTAssertEqual(results[3].decision, .uncertain)
+        XCTAssertEqual(results[3].phase, .trackingLost)
+        XCTAssertEqual(results.last?.count, 0)
+    }
+
+    func testMissingBottomMeasurementCannotCreateAnUnobservedCycle() {
+        let samples: [(TimeInterval, Double?)] = [
+            (0, 170), (0.2, 145), (0.4, nil), (0.6, 120), (0.8, 165)
+        ]
+        let frames = samples.map { time, angle in
+            VideoPoseFrame(timestamp: time, observations: [person(0, 0.3, angle)])
+        }
+        let results = OfflineTargetAnalyzer.analyze(frames, selectedFrame: 0, candidateIndex: 0)
+        XCTAssertEqual(results[2].phase, .descending)
+        XCTAssertEqual(results.last?.count, 0)
+        XCTAssertTrue(results.allSatisfy { $0.event == nil })
     }
 }

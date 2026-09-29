@@ -1,5 +1,9 @@
 # Estado de QA — RitmoVis
 
+## Correção de rastreamento — 29/09/2026
+
+[Relatório atual](qa-tracking-correction-2026-09-29.md): 66/66 testes Swift, 71/71 no Xcode/simulador (66 núcleo + 5 UI), 15/15 Node e build assinado físico aprovados. No iPhone 15, a regressão de troca aos 1,1 s passou nos nove quadros marcados; a seleção com o aluno agachado em 1 s também foi aceita. Vision usa todas as observações; cache de rivais e tolerância de ângulo ausente foram revisados com Astra. **M2/beta não aprovados**, contagens e identidade do restante dos clipes ainda exigem referência humana. Câmera ao vivo e MediaPipe não foram validados por esse resultado offline. Automação anterior pausada; histórico pessoal preservado.
+
 ## Monitoramento de testes — 26/09/2026
 
 O proprietário vai importar vídeos de seu telefone para testar o app. Foi adicionado diagnóstico ativado explicitamente na sessão Debug para preservar cada análise/seleção, erro e recusa em `Documents/QAMonitoring`. Build físico e 54 testes de núcleo aprovados; clipe de referência no iPhone gerou evento de início e relatório completo separados. Ver [procedimento e limites](monitoring-imports.md). Isto prepara acompanhamento; não representa aprovação dos novos vídeos do usuário.

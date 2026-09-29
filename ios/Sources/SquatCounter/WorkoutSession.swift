@@ -1405,8 +1405,13 @@ private final class InferenceWorker: @unchecked Sendable {
             frameHealth.observe(isNearBlack: nearBlack)
             if frame.kneeAngle == nil { noPose += 1 }
             let event: RepEvent?
-            if case .selected = decision, let kneeAngle = frame.kneeAngle {
-                event = counter.consume(.init(timestamp: pts, kneeAngle: kneeAngle, confidence: frame.confidence))
+            if case .selected = decision, selected != nil {
+                if let kneeAngle = frame.kneeAngle, kneeAngle.isFinite {
+                    event = counter.consume(.init(timestamp: pts, kneeAngle: kneeAngle, confidence: frame.confidence))
+                } else {
+                    counter.recordMissingMeasurement(at: pts)
+                    event = nil
+                }
             } else {
                 counter.interruptTracking(at: pts)
                 event = nil

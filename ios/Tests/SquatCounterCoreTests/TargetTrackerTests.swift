@@ -41,6 +41,127 @@ final class TargetTrackerTests: XCTestCase {
         XCTAssertEqual(tracker.update([person(1, x: 0.8)], at: 0.1), .uncertain)
     }
 
+    func testPreexistingSameAppearanceRivalDoesNotTakeOverAfterShortTargetGap() {
+        var tracker = TargetTracker()
+        let shirt = Array(repeating: 0.2, count: 6)
+        func athlete(_ index: Int, x: Double) -> PoseCandidate {
+            PoseCandidate(index: index, centerX: x, centerY: 0.5, width: 0.25,
+                          height: 0.4, confidence: 0.9, appearance: shirt,
+                          torsoX: x, torsoY: 0.5, torsoSize: 0.12)
+        }
+        _ = tracker.select(athlete(0, x: 0.415), at: 0.8)
+        XCTAssertEqual(tracker.update([athlete(1, x: 0.60), athlete(0, x: 0.415)], at: 0.8667),
+                       .selected(index: 0))
+        XCTAssertEqual(tracker.update([athlete(0, x: 0.60)], at: 0.9), .uncertain)
+        XCTAssertEqual(tracker.update([athlete(2, x: 0.60)], at: 1.0667), .uncertain)
+        XCTAssertEqual(tracker.update([athlete(1, x: 0.60)], at: 1.1), .uncertain)
+        XCTAssertEqual(tracker.update([athlete(0, x: 0.60), athlete(1, x: 0.42)], at: 1.1333),
+                       .selected(index: 1))
+    }
+
+    func testMovingTargetRecoversAfterGapWhileKnownRivalAlsoMoves() {
+        var tracker = TargetTracker()
+        let shirt = Array(repeating: 0.2, count: 6)
+        func athlete(_ index: Int, x: Double) -> PoseCandidate {
+            PoseCandidate(index: index, centerX: x, centerY: 0.5, width: 0.25,
+                          height: 0.4, confidence: 0.9, appearance: shirt,
+                          torsoX: x, torsoY: 0.5, torsoSize: 0.12)
+        }
+        _ = tracker.select(athlete(0, x: 0.415), at: 0.8)
+        XCTAssertEqual(tracker.update([athlete(1, x: 0.60), athlete(0, x: 0.415)], at: 0.8667),
+                       .selected(index: 0))
+        XCTAssertEqual(tracker.update([athlete(0, x: 0.59)], at: 0.9), .uncertain)
+        XCTAssertEqual(tracker.update([athlete(2, x: 0.57)], at: 1.0), .uncertain)
+        XCTAssertEqual(tracker.update([athlete(0, x: 0.55), athlete(1, x: 0.48)], at: 1.1),
+                       .selected(index: 1))
+    }
+
+    func testKnownRivalCrossingRecoveredTargetCausesAbstention() {
+        var tracker = TargetTracker()
+        let shirt = Array(repeating: 0.2, count: 6)
+        func athlete(_ index: Int, x: Double) -> PoseCandidate {
+            PoseCandidate(index: index, centerX: x, centerY: 0.5, width: 0.25,
+                          height: 0.4, confidence: 0.9, appearance: shirt,
+                          torsoX: x, torsoY: 0.5, torsoSize: 0.12)
+        }
+        _ = tracker.select(athlete(0, x: 0.415), at: 0.8)
+        XCTAssertEqual(tracker.update([athlete(0, x: 0.415), athlete(1, x: 0.58)], at: 0.8667),
+                       .selected(index: 0))
+        XCTAssertEqual(tracker.update([athlete(0, x: 0.55)], at: 0.9333), .uncertain)
+        XCTAssertEqual(tracker.update([athlete(0, x: 0.52), athlete(1, x: 0.54)], at: 1.1),
+                       .uncertain)
+    }
+
+    func testRivalAssociationCannotStealTargetAndFreeRivalDuringCrossing() {
+        let shirt = Array(repeating: 0.2, count: 6)
+        func athlete(_ index: Int, x: Double) -> PoseCandidate {
+            PoseCandidate(index: index, centerX: x, centerY: 0.5, width: 0.25,
+                          height: 0.4, confidence: 0.9, appearance: shirt,
+                          torsoX: x, torsoY: 0.5, torsoSize: 0.12)
+        }
+        for shuffled in [false, true] {
+            var tracker = TargetTracker()
+            _ = tracker.select(athlete(0, x: 0.40), at: 0)
+            XCTAssertEqual(tracker.update([athlete(0, x: 0.40), athlete(1, x: 0.50)], at: 0),
+                           .selected(index: 0))
+            let crossing = shuffled
+                ? [athlete(0, x: 0.58), athlete(1, x: 0.49)]
+                : [athlete(0, x: 0.49), athlete(1, x: 0.58)]
+            XCTAssertEqual(tracker.update(crossing, at: 0.1), .uncertain)
+            let following = shuffled
+                ? [athlete(1, x: 0.58), athlete(0, x: 0.50)]
+                : [athlete(0, x: 0.50), athlete(1, x: 0.58)]
+            XCTAssertEqual(tracker.update(following, at: 0.2), .uncertain)
+        }
+    }
+
+    func testTemporarilyMissingRivalRemainsKnownDuringNextTargetGap() {
+        var tracker = TargetTracker()
+        let shirt = Array(repeating: 0.2, count: 6)
+        func athlete(_ index: Int, x: Double) -> PoseCandidate {
+            PoseCandidate(index: index, centerX: x, centerY: 0.5, width: 0.25,
+                          height: 0.4, confidence: 0.9, appearance: shirt,
+                          torsoX: x, torsoY: 0.5, torsoSize: 0.12)
+        }
+        _ = tracker.select(athlete(0, x: 0.40), at: 0)
+        XCTAssertEqual(tracker.update([athlete(0, x: 0.40), athlete(1, x: 0.55)], at: 0),
+                       .selected(index: 0))
+        XCTAssertEqual(tracker.update([athlete(1, x: 0.40)], at: 0.1), .selected(index: 1))
+        XCTAssertEqual(tracker.update([athlete(0, x: 0.50)], at: 0.2), .uncertain)
+    }
+
+    func testAbsentRivalMemoryExpiresWhileTargetContinuesToBeObserved() {
+        var tracker = TargetTracker()
+        let shirt = Array(repeating: 0.2, count: 6)
+        func athlete(_ index: Int, x: Double) -> PoseCandidate {
+            PoseCandidate(index: index, centerX: x, centerY: 0.5, width: 0.25,
+                          height: 0.4, confidence: 0.9, appearance: shirt,
+                          torsoX: x, torsoY: 0.5, torsoSize: 0.12)
+        }
+        _ = tracker.select(athlete(0, x: 0.40), at: 0)
+        XCTAssertEqual(tracker.update([athlete(0, x: 0.40), athlete(1, x: 0.50)], at: 0),
+                       .selected(index: 0))
+        for time in [0.1, 0.2, 0.3, 0.4, 0.5] {
+            XCTAssertEqual(tracker.update([athlete(1, x: 0.40)], at: time), .selected(index: 1))
+        }
+        XCTAssertEqual(tracker.update([athlete(0, x: 0.50)], at: 0.6), .selected(index: 0))
+    }
+
+    func testMidpointBetweenTargetAndRivalAnchorsRemainsAmbiguous() {
+        var tracker = TargetTracker()
+        let shirt = Array(repeating: 0.2, count: 6)
+        func athlete(_ index: Int, x: Double) -> PoseCandidate {
+            PoseCandidate(index: index, centerX: x, centerY: 0.5, width: 0.25,
+                          height: 0.4, confidence: 0.9, appearance: shirt,
+                          torsoX: x, torsoY: 0.5, torsoSize: 0.12)
+        }
+        _ = tracker.select(athlete(0, x: 0.40), at: 0)
+        XCTAssertEqual(tracker.update([athlete(1, x: 0.60), athlete(0, x: 0.40)], at: 0),
+                       .selected(index: 0))
+        XCTAssertEqual(tracker.update([athlete(1, x: 0.52), athlete(0, x: 0.50)], at: 0.2),
+                       .uncertain)
+    }
+
     func testOneFrameTeleportToOtherAthleteIsNotCredited() {
         var tracker = TargetTracker()
         let blackShirt = Array(repeating: 0.12, count: 6)

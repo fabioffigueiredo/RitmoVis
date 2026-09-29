@@ -49,10 +49,13 @@ public enum OfflineTargetAnalyzer {
                 : tracker.update(frame.observations.map(\.candidate), at: frame.timestamp)
             var event: RepEvent?
             if case .selected(let selectedIndex) = decision,
-               let pose = frame.observations.first(where: { $0.candidate.index == selectedIndex }),
-               let angle = pose.kneeAngle {
-                event = counter.consume(.init(timestamp: frame.timestamp, kneeAngle: angle,
-                                               confidence: pose.confidence))
+               let pose = frame.observations.first(where: { $0.candidate.index == selectedIndex }) {
+                if let angle = pose.kneeAngle, angle.isFinite {
+                    event = counter.consume(.init(timestamp: frame.timestamp, kneeAngle: angle,
+                                                   confidence: pose.confidence))
+                } else {
+                    counter.recordMissingMeasurement(at: frame.timestamp)
+                }
             } else {
                 counter.interruptTracking(at: frame.timestamp)
             }

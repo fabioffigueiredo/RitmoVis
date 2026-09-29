@@ -66,6 +66,11 @@ public enum TrackingDecision: Equatable, Sendable {
 /// Conservative, session-local geometry association. This is a baseline, not proof of identity.
 /// When candidates overlap or the target disappears, callers must abstain from counting.
 public struct TargetTracker: Sendable {
+    private struct RivalObservation: Sendable {
+        let candidate: PoseCandidate
+        let at: TimeInterval
+    }
+
     private var anchor: PoseCandidate?
     private var lastConfirmedAt: TimeInterval?
     private var requiresReselection = false
@@ -73,6 +78,7 @@ public struct TargetTracker: Sendable {
     private var appearanceConflictObserved = false
     private var pendingRecovery: PoseCandidate?
     private var pendingRecoveryAt: TimeInterval?
+    private var rivals: [RivalObservation] = []
 
     public init() {}
 
@@ -85,6 +91,7 @@ public struct TargetTracker: Sendable {
         appearanceConflictObserved = false
         pendingRecovery = nil
         pendingRecoveryAt = nil
+        rivals = []
         return .selected(index: candidate.index)
     }
 
@@ -102,6 +109,7 @@ public struct TargetTracker: Sendable {
         // A single video frame cannot move a body across another athlete. Expand the
         // spatial gate only as time since the last confirmed observation increases.
         let motionLimit = min(age > 0.45 ? 0.28 : 0.22, max(0.08, 1.2 * age))
+        let knownRivals = knownRivalOffsets(in: candidates, at: time)
 
         let appearanceConflict = appearanceConflictObserved || candidates.contains { candidate in
             guard isValid(candidate), let referenceAppearance,
@@ -111,8 +119,9 @@ public struct TargetTracker: Sendable {
                 appearanceDistance(referenceAppearance, current) > 0.25
         }
         appearanceConflictObserved = appearanceConflict
-        let ranked = candidates.compactMap { candidate -> (candidate: PoseCandidate, score: Double)? in
-            guard isValid(candidate) else { return nil }
+        let ranked = candidates.enumerated().compactMap { offset, candidate
+            -> (offset: Int, candidate: PoseCandidate, score: Double)? in
+            guard isValid(candidate), !knownRivals.contains(offset) else { return nil }
             let geometry = motionGeometry(from: anchor, to: candidate)
             let distance = geometry.distance
             let sizeChange = geometry.sizeChange
@@ -121,13 +130,13 @@ public struct TargetTracker: Sendable {
                 guard let current = validAppearance(candidate.appearance) else {
                     // A missing signature cannot justify a long-gap reacquisition.
                     guard age <= 0.45, !appearanceConflict else { return nil }
-                    return (candidate, distance + 0.2 * sizeChange + 0.15)
+                    return (offset, candidate, distance + 0.2 * sizeChange + 0.15)
                 }
                 let difference = appearanceDistance(referenceAppearance, current)
                 guard difference <= 0.25 else { return nil }
-                return (candidate, distance + 0.2 * sizeChange + 0.5 * difference)
+                return (offset, candidate, distance + 0.2 * sizeChange + 0.5 * difference)
             }
-            return (candidate, distance + 0.2 * sizeChange)
+            return (offset, candidate, distance + 0.2 * sizeChange)
         }.sorted { $0.score < $1.score }
 
         guard let best = ranked.first else {
@@ -151,6 +160,17 @@ public struct TargetTracker: Sendable {
         }
         self.anchor = best.candidate
         self.lastConfirmedAt = time
+        let observedRivals: [RivalObservation] = candidates.enumerated().compactMap { offset, candidate in
+            offset != best.offset && isValid(candidate)
+                ? RivalObservation(candidate: candidate, at: time) : nil
+        }
+        let remainingRivals = rivals.filter { previous in
+            !observedRivals.contains { current in
+                let geometry = motionGeometry(from: previous.candidate, to: current.candidate)
+                return geometry.distance <= 0.06 && geometry.sizeChange <= geometry.sizeLimit
+            }
+        }
+        rivals = remainingRivals + observedRivals
         pendingRecovery = nil
         pendingRecoveryAt = nil
         appearanceConflictObserved = false
@@ -173,6 +193,47 @@ public struct TargetTracker: Sendable {
         candidate.confidence.isFinite && candidate.confidence >= 0.5
     }
 
+    private mutating func knownRivalOffsets(in candidates: [PoseCandidate], at time: TimeInterval)
+        -> Set<Int> {
+        guard let targetAnchor = anchor else { return [] }
+        var offsets = Set<Int>()
+        rivals = rivals.compactMap { rival in
+            let elapsed = time - rival.at
+            guard elapsed >= 0, elapsed <= 0.45 else { return nil }
+            let limit = min(0.22, max(0.08, 1.2 * elapsed))
+            let matches = candidates.enumerated().compactMap { offset, candidate
+                -> (offset: Int, targetDistance: Double, rivalDistance: Double)? in
+                guard isValid(candidate) else { return nil }
+                let geometry = motionGeometry(from: rival.candidate, to: candidate)
+                guard geometry.distance <= limit, geometry.sizeChange <= geometry.sizeLimit else {
+                    return nil
+                }
+                return (offset, motionGeometry(from: targetAnchor, to: candidate).distance,
+                        geometry.distance)
+            }
+            if matches.count == 1, let match = matches.first {
+                // A target still near its anchor must not inherit a vanished rival's label.
+                // A small advantage is insufficient when that rival is the only observation.
+                if match.targetDistance + 0.06 < match.rivalDistance { return rival }
+                offsets.insert(match.offset)
+                return RivalObservation(candidate: candidates[match.offset], at: time)
+            }
+            if matches.count == 2 {
+                let targetLike = matches.filter { $0.targetDistance + 0.01 < $0.rivalDistance }
+                let rivalLike = matches.filter { $0.rivalDistance + 0.01 < $0.targetDistance }
+                if targetLike.count == 1, let knownRival = rivalLike.first, rivalLike.count == 1 {
+                    offsets.insert(knownRival.offset)
+                    return RivalObservation(candidate: candidates[knownRival.offset], at: time)
+                }
+            }
+            // An ambiguous rival match may include the target. Exclude every match
+            // rather than moving the rival anchor onto one and releasing the other.
+            offsets.formUnion(matches.map(\.offset))
+            return rival
+        }
+        return offsets
+    }
+
     private func motionGeometry(from anchor: PoseCandidate, to candidate: PoseCandidate)
         -> (distance: Double, sizeChange: Double, sizeLimit: Double) {
         if let ax = anchor.torsoX, let ay = anchor.torsoY, let asize = anchor.torsoSize,
@@ -193,6 +254,7 @@ public struct TargetTracker: Sendable {
         appearanceConflictObserved = false
         pendingRecovery = nil
         pendingRecoveryAt = nil
+        rivals = []
     }
 
     private func validAppearance(_ values: [Double]?) -> [Double]? {

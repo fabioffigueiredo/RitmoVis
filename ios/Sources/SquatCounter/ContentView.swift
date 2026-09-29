@@ -193,8 +193,17 @@ struct ContentView: View {
                 .accessibilityIdentifier("videoReplay")
             Text("\(session.repetitions) · \(session.phaseText)")
                 .font(.subheadline.monospacedDigit())
-            Text("Pessoas detectadas no quadro: \(session.targetCandidates.count)")
-                .font(.footnote).foregroundStyle(.white.opacity(0.72))
+            if session.isChoosingVideoPerson && session.importedVideoHasMultiplePeople {
+                Text("Pessoas aptas à análise no quadro: \(session.targetCandidates.count)")
+                    .font(.footnote).foregroundStyle(.white.opacity(0.72))
+                    .accessibilityIdentifier("eligibleVideoPeopleCount")
+                Text("Se a pessoa aparece mas não pode ser selecionada, avance para um quadro com quadril, joelho e tornozelo visíveis ou ajuste luz e enquadramento.")
+                    .font(.footnote).foregroundStyle(.white.opacity(0.72))
+                    .accessibilityIdentifier("selectionEligibilityExplanation")
+            } else {
+                Text("Pessoas detectadas no quadro: \(session.targetCandidates.count)")
+                    .font(.footnote).foregroundStyle(.white.opacity(0.72))
+            }
             if session.importedVideoHasMultiplePeople {
                 Text(session.videoBackendUsed).font(.caption)
                 if session.isChoosingVideoPerson {
@@ -239,6 +248,9 @@ struct ContentView: View {
                 .font(.title3.weight(.bold)).foregroundStyle(Theme.accent)
             Text("Abra um vídeo salvo em Arquivos ou Fotos. O app analisa os quadros no iPhone e mostra a contagem sincronizada durante a reprodução. O clipe não entra no Histórico de treinos.")
                 .font(.subheadline).foregroundStyle(.white.opacity(0.82))
+            Text("Escolha o modo antes de importar. Alterar a opção não recalcula o replay; importe novamente.")
+                .font(.footnote).foregroundStyle(.white.opacity(0.72))
+                .accessibilityIdentifier("importModeTimingNotice")
             HStack {
                 Button { showingFileImporter = true } label: {
                     Label("Arquivos", systemImage: "folder")

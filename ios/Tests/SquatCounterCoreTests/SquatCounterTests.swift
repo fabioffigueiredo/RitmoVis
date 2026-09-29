@@ -78,4 +78,18 @@ final class SquatCounterTests: XCTestCase {
         }
         XCTAssertEqual(counter.repetitions, 2)
     }
+
+    func testMissingMeasurementIgnoresInvalidAndBackwardTimestamps() {
+        var counter = SquatCounter(); counter.minimumPhaseDuration = 0
+        _ = counter.consume(.init(timestamp: 0, kneeAngle: 170, confidence: 0.9))
+        _ = counter.consume(.init(timestamp: 0.1, kneeAngle: 145, confidence: 0.9))
+        _ = counter.consume(.init(timestamp: 0.2, kneeAngle: 100, confidence: 0.9))
+        counter.recordMissingMeasurement(at: .nan)
+        counter.recordMissingMeasurement(at: .infinity)
+        counter.recordMissingMeasurement(at: 0.15)
+        XCTAssertEqual(counter.phase, .bottom)
+        _ = counter.consume(.init(timestamp: 0.3, kneeAngle: 120, confidence: 0.9))
+        _ = counter.consume(.init(timestamp: 0.4, kneeAngle: 165, confidence: 0.9))
+        XCTAssertEqual(counter.repetitions, 1)
+    }
 }
