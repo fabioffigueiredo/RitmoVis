@@ -48,7 +48,8 @@ test('evaluates full clip identity and repetitions without treating abstention a
   assert.deepEqual(output.metrics, {
     annotatedFrames: 3, observableFrames: 3, correctSelectedFrames: 2,
     wrongSelectedFrames: 0, abstainedFrames: 1, coverage: 2 / 3,
-    creditedToOtherPerson: 0, truePositives: 1, falsePositives: 0,
+    creditedToOtherPerson: 0, ambiguousIdentityEvents: 0,
+    truePositives: 1, falsePositives: 0,
     falseNegatives: 0, precision: 1, recall: 1
   });
 });
@@ -61,6 +62,18 @@ test('rejects a repetition credited to a rival even when its timestamp matches a
   assert.equal(output.metrics.wrongSelectedFrames, 1);
   assert.equal(output.metrics.creditedToOtherPerson, 1);
   assert.equal(output.failures[0].code, 'wrong-person-credit');
+});
+
+test('overlapping candidate centers cannot prove the selected identity', () => {
+  const report = structuredClone(baseReport);
+  report.trace[1].candidates[0].centerX = 0.31;
+  report.trace[1].decision = 'selected(index: 1)';
+  const { status, output } = run(report);
+  assert.equal(status, 1);
+  assert.ok(output.failures.some(failure => failure.code === 'ambiguous-target-label'));
+  assert.ok(output.failures.some(failure => failure.code === 'ambiguous-event-identity'));
+  assert.equal(output.metrics.ambiguousIdentityEvents, 1);
+  assert.equal(output.metrics.creditedToOtherPerson, 0);
 });
 
 test('requires a manual identity label at every automatic event', () => {

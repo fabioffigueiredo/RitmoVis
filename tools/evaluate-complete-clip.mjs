@@ -8,7 +8,8 @@ const failures = [];
 const metrics = {
   annotatedFrames: 0, observableFrames: 0, correctSelectedFrames: 0,
   wrongSelectedFrames: 0, abstainedFrames: 0, coverage: null,
-  creditedToOtherPerson: 0, truePositives: 0, falsePositives: 0,
+  creditedToOtherPerson: 0, ambiguousIdentityEvents: 0,
+  truePositives: 0, falsePositives: 0,
   falseNegatives: 0, precision: null, recall: null
 };
 const fail = (code, details = {}) => failures.push({ code, ...details });
@@ -42,6 +43,12 @@ function atTime(items, time, field) {
 }
 
 function selection(frame, label) {
+  // A target box alone cannot assign identity when two candidate centers overlap.
+  // Reject this annotation even if the selected center also lies in the box.
+  if (label.observability === 'observable' &&
+      frame.candidates.filter(item => inside(item, label.targetBox)).length > 1) {
+    return 'ambiguous';
+  }
   const selected = /^selected\(index: (\d+)\)$/.exec(frame.decision);
   if (!selected) return 'abstained';
   const person = frame.candidates.find(item => item.index === Number(selected[1]));
@@ -97,6 +104,7 @@ function evaluate(report, labels) {
     if (state === 'correct') metrics.correctSelectedFrames++;
     else if (state === 'wrong') metrics.wrongSelectedFrames++;
     else if (state === 'abstained' && label.observability === 'observable') metrics.abstainedFrames++;
+    else if (state === 'ambiguous') fail('ambiguous-target-label', { index, pts: label.pts });
     else if (state === 'invalid') fail('invalid-selected-candidate', { index, pts: label.pts });
   }
   metrics.coverage = metrics.observableFrames === 0 ? null :
@@ -109,7 +117,11 @@ function evaluate(report, labels) {
     if (!label || !frame) {
       fail('unlabelled-event', { index, timestamp: event.timestamp }); continue;
     }
-    if (selection(frame, label) !== 'correct') {
+    const state = selection(frame, label);
+    if (state === 'ambiguous') {
+      metrics.ambiguousIdentityEvents++;
+      fail('ambiguous-event-identity', { index, timestamp: event.timestamp });
+    } else if (state !== 'correct') {
       metrics.creditedToOtherPerson++;
       fail('wrong-person-credit', { index, timestamp: event.timestamp });
     } else validEvents.push(event.timestamp);
@@ -125,7 +137,8 @@ function evaluate(report, labels) {
     else { metrics.truePositives++; expected++; actual++; }
   }
   metrics.falseNegatives += completions.length - expected;
-  metrics.falsePositives += validEvents.length - actual + metrics.creditedToOtherPerson;
+  metrics.falsePositives += validEvents.length - actual +
+    metrics.creditedToOtherPerson + metrics.ambiguousIdentityEvents;
   const predicted = metrics.truePositives + metrics.falsePositives;
   const annotated = metrics.truePositives + metrics.falseNegatives;
   metrics.precision = predicted ? metrics.truePositives / predicted : null;
