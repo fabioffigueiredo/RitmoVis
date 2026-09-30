@@ -1,5 +1,15 @@
 import Foundation
 
+/// Diagnostic captures exercise the camera without becoming completed workouts.
+/// Call only from DEBUG builds; normal app launches always persist workouts.
+public enum WorkoutHistoryPolicy {
+    public static func shouldPersist(launchArguments: [String]) -> Bool {
+        // Recording diagnostics need their history sidecar to keep replay files linked.
+        let diagnosticArguments: Set<String> = ["--qa-camera", "--qa-front-camera"]
+        return diagnosticArguments.isDisjoint(with: launchArguments)
+    }
+}
+
 /// The persistence state of a workout entry.
 public enum WorkoutRecordStatus: String, Codable, Sendable {
     case completed

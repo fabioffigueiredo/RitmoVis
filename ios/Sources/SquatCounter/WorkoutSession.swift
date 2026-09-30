@@ -515,7 +515,13 @@ private final class CaptureSessionBox: @unchecked Sendable {
             processedFrames: metrics.processedFrames
         )
         let finishingRecording = activeRecordingURL != nil && recordingStartRequested
-        if wasCameraActive, let startedAt {
+        #if DEBUG
+        let shouldPersistWorkout = WorkoutHistoryPolicy.shouldPersist(
+            launchArguments: ProcessInfo.processInfo.arguments)
+        #else
+        let shouldPersistWorkout = true
+        #endif
+        if wasCameraActive, let startedAt, shouldPersistWorkout {
             let record = WorkoutRecord(startedAt: startedAt, endedAt: Date(),
                                        exercise: exercise.rawValue, target: plan.targetRepetitions,
                                        repetitions: repetitions, elapsedSeconds: summary.elapsedSeconds,
@@ -1249,6 +1255,7 @@ private final class InferenceWorker: @unchecked Sendable {
     private var lastCandidatePTS: TimeInterval?
     private var lastCandidateUptime: TimeInterval?
     private var counter = SquatCounter()
+    private var selectionReadiness = SelectionReadinessGate(delay: 3)
     private var processed = 0
     private var dropped = 0
     private var firstDetectionError: String?
@@ -1304,7 +1311,9 @@ private final class InferenceWorker: @unchecked Sendable {
             }
             guard matches.count == 1 else { return }
             self.counter.interruptTracking(at: pts)
-            _ = self.tracker.select(matches[0], at: pts)
+            if case .selected = self.tracker.select(matches[0], at: pts) {
+                self.selectionReadiness.arm(at: pts)
+            }
         }
     }
 
@@ -1384,6 +1393,7 @@ private final class InferenceWorker: @unchecked Sendable {
             } else {
                 decision = .noSelection
             }
+            if decision == .reselectionRequired { selectionReadiness.disarm() }
             let selected: PoseFrame?
             if case .selected(let index) = decision, batch.poses.indices.contains(index) {
                 selected = batch.poses[index]
@@ -1405,7 +1415,8 @@ private final class InferenceWorker: @unchecked Sendable {
             frameHealth.observe(isNearBlack: nearBlack)
             if frame.kneeAngle == nil { noPose += 1 }
             let event: RepEvent?
-            if case .selected = decision, selected != nil {
+            if case .selected = decision, selected != nil,
+               (!requiresExplicitSelection || selectionReadiness.isReady(at: pts)) {
                 if let kneeAngle = frame.kneeAngle, kneeAngle.isFinite {
                     event = counter.consume(.init(timestamp: pts, kneeAngle: kneeAngle, confidence: frame.confidence))
                 } else {
@@ -1418,7 +1429,13 @@ private final class InferenceWorker: @unchecked Sendable {
             }
             let phase: String
             switch decision {
-            case .selected: phase = counter.phase.displayText
+            case .selected:
+                if requiresExplicitSelection,
+                   let remaining = selectionReadiness.remaining(at: pts), remaining > 0 {
+                    phase = "Volte à posição · contagem em \(Int(ceil(remaining))) s"
+                } else {
+                    phase = counter.phase.displayText
+                }
             case .noSelection:
                 if batch.candidates.isEmpty { phase = "Aguardando pessoas no quadro" }
                 else if requiresExplicitSelection { phase = "Toque na pessoa que será acompanhada" }

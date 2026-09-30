@@ -3,6 +3,15 @@ import XCTest
 @testable import SquatCounterCore
 
 final class WorkoutHistoryTests: XCTestCase {
+    func testAutomatedCameraDiagnosticsDoNotCreateWorkoutHistory() {
+        XCTAssertTrue(WorkoutHistoryPolicy.shouldPersist(launchArguments: []))
+        XCTAssertTrue(WorkoutHistoryPolicy.shouldPersist(launchArguments: ["--qa-clip-lite"]))
+        XCTAssertTrue(WorkoutHistoryPolicy.shouldPersist(launchArguments: ["--qa-record-camera"]))
+        for argument in ["--qa-camera", "--qa-front-camera"] {
+            XCTAssertFalse(WorkoutHistoryPolicy.shouldPersist(launchArguments: [argument]))
+        }
+    }
+
     private var documentsURL: URL!
 
     override func setUpWithError() throws {

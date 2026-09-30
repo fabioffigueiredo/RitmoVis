@@ -5,9 +5,19 @@ import UniformTypeIdentifiers
 import SquatCounterCore
 
 private enum Theme {
-    static let background = Color(red: 0.07, green: 0.10, blue: 0.15)
-    static let surface = Color(red: 0.12, green: 0.16, blue: 0.22)
-    static let accent = Color(red: 1, green: 0.56, blue: 0.22)
+    // Temporary high-contrast demo palette. RitmoVis keeps its own name and identity.
+    static let background = Color(red: 0.035, green: 0.05, blue: 0.065)
+    static let surface = Color(red: 0.09, green: 0.12, blue: 0.15)
+    static let accent = Color(red: 0.24, green: 0.78, blue: 0.96)
+    static let onAccent = Color(red: 0.02, green: 0.08, blue: 0.11)
+    static let border = Color.white.opacity(0.14)
+}
+
+private extension TrackingDecision {
+    var isSelected: Bool {
+        if case .selected = self { return true }
+        return false
+    }
 }
 
 struct ContentView: View {
@@ -17,6 +27,7 @@ struct ContentView: View {
     @State private var pickerItem: PhotosPickerItem?
     @State private var showingFileImporter = false
     @State private var didRunQA = false
+    @State private var showAdvancedOptions = false
 
     var body: some View {
         ZStack {
@@ -34,6 +45,7 @@ struct ContentView: View {
             }
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: session.isStarting || session.isCameraActive)
+        .preferredColorScheme(.dark)
         .onAppear { session.refreshHistory(); runQAIfRequested() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background && (session.isCameraActive || session.isStarting) { session.stop() }
@@ -51,10 +63,10 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 20) {
                 introduction
                 if let summary = session.workoutSummary { resultCard(summary) }
+                setupCard
                 videoAnalysisCard
                 if let player = session.videoPlayer { replayCard(player) }
-                setupCard
-                diagnosticsCard
+                if showAdvancedOptions { diagnosticsCard }
             }
             .padding(16)
             .padding(.bottom, 80)
@@ -76,6 +88,7 @@ struct ContentView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(Theme.accent)
+            .foregroundStyle(Theme.onAccent)
             .disabled(session.isFinalizingRecording)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
@@ -85,11 +98,11 @@ struct ContentView: View {
 
     private var introduction: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("AGACHAMENTO LIVRE", systemImage: "figure.strengthtraining.traditional")
+            Label("RITMOVIS · PROTÓTIPO", systemImage: "figure.strengthtraining.traditional")
                 .font(.caption.weight(.bold)).foregroundStyle(Theme.accent)
-            Text("Seu treino, em foco.")
+            Text("Posicione. Selecione. Treine.")
                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
-            Text("Apoie o iPhone, deixe o corpo inteiro visível e toque em Iniciar. A contagem acontece no aparelho.")
+            Text("Apoie o iPhone, enquadre o corpo inteiro e toque em Iniciar. Escolha na imagem quem será acompanhado.")
                 .font(.body).foregroundStyle(.white.opacity(0.82))
             HStack(spacing: 12) {
                 Label("\(session.plan.targetRepetitions) repetições", systemImage: "number")
@@ -102,28 +115,39 @@ struct ContentView: View {
 
     private var setupCard: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Preparar sessão").font(.title2.weight(.bold))
+            Text("Preparar treino").font(.title2.weight(.bold))
+            Label("Agachamento livre", systemImage: "figure.strengthtraining.traditional")
+                .font(.headline)
+                .foregroundStyle(Theme.accent)
             Picker("Câmera", selection: $session.cameraChoice) {
                 ForEach(CameraChoice.allCases) { choice in Text(choice.title).tag(choice) }
             }
             .pickerStyle(.segmented)
-            Picker("Modelo de pose", selection: $session.model) {
-                Text("Lite").tag(PoseModel.lite)
-                Text("Full").tag(PoseModel.full)
-            }
-            .pickerStyle(.segmented)
-            Text(session.model == .lite
-                 ? "Lite: resposta mais rápida e menor uso de processamento. Recomendado para começar."
-                 : "Full: usa mais processamento e pode localizar melhor os pontos do corpo. Não garante melhor contagem em todo treino.")
-                .font(.footnote).foregroundStyle(.white.opacity(0.78))
             Stepper("Meta: \(session.plan.targetRepetitions) repetições",
                     value: $session.plan.targetRepetitions, in: 1...500)
-            Stepper("Tempo de referência: \(Int(session.plan.duration)) s",
-                    value: $session.plan.duration, in: 10...3600, step: 10)
             Toggle("Gravar vídeo para replay", isOn: $session.recordWorkout)
                 .tint(Theme.accent)
-            Text("Opcional. Vídeo sem áudio salvo neste iPhone; o replay com contagem fica no Histórico. O tempo de referência não encerra o treino sozinho.")
+            Text("Opcional. A gravação fica neste iPhone, sem áudio; você pode rever a contagem no Histórico.")
                 .font(.footnote).foregroundStyle(.white.opacity(0.72))
+            DisclosureGroup("Opções avançadas", isExpanded: $showAdvancedOptions) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Picker("Modelo de pose", selection: $session.model) {
+                        Text("Lite").tag(PoseModel.lite)
+                        Text("Full").tag(PoseModel.full)
+                    }
+                    .pickerStyle(.segmented)
+                    Text(session.model == .lite
+                         ? "Lite prioriza menor uso de processamento."
+                         : "Full usa mais processamento e pode localizar melhor os pontos; não garante mais contagens.")
+                        .font(.footnote).foregroundStyle(.white.opacity(0.78))
+                    Stepper("Tempo de referência: \(Int(session.plan.duration)) s",
+                            value: $session.plan.duration, in: 10...3600, step: 10)
+                    Text("O tempo de referência não encerra o treino sozinho.")
+                        .font(.footnote).foregroundStyle(.white.opacity(0.72))
+                }
+                .padding(.top, 12)
+            }
+            .tint(Theme.accent)
             if let error = session.historyError {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
                     .font(.footnote).foregroundStyle(.yellow)
@@ -139,12 +163,13 @@ struct ContentView: View {
 
     private func resultCard(_ summary: WorkoutSummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Último treino", systemImage: "checkmark.circle.fill")
+            Label("Resumo do treino", systemImage: "chart.bar.fill")
                 .font(.headline).foregroundStyle(Theme.accent)
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("\(summary.repetitions)").font(.system(size: 54, weight: .bold, design: .rounded))
-                Text("/ \(summary.target) repetições").font(.title3.weight(.semibold))
+                Text("/ \(summary.target)").font(.title3.weight(.semibold))
             }
+            Text("Repetições detectadas").font(.subheadline.weight(.semibold))
             Text(summary.couldNotAssess
                  ? "Não foi possível verificar a meta. Confira câmera, luz e enquadramento."
                  : summary.remaining > 0 ? "Faltaram \(summary.remaining) para a meta" : "Meta alcançada")
@@ -181,7 +206,7 @@ struct ContentView: View {
                     }
                 }
                 .overlay(alignment: .topLeading) {
-                    Text("CONTAGEM  \(session.repetitions)")
+                Text("REPETIÇÕES DETECTADAS  \(session.repetitions)")
                         .font(.headline.monospacedDigit())
                         .padding(8)
                         .background(.black.opacity(0.82), in: RoundedRectangle(cornerRadius: 8))
@@ -248,9 +273,6 @@ struct ContentView: View {
                 .font(.title3.weight(.bold)).foregroundStyle(Theme.accent)
             Text("Abra um vídeo salvo em Arquivos ou Fotos. O app analisa os quadros no iPhone e mostra a contagem sincronizada durante a reprodução. O clipe não entra no Histórico de treinos.")
                 .font(.subheadline).foregroundStyle(.white.opacity(0.82))
-            Text("Escolha o modo antes de importar. Alterar a opção não recalcula o replay; importe novamente.")
-                .font(.footnote).foregroundStyle(.white.opacity(0.72))
-                .accessibilityIdentifier("importModeTimingNotice")
             HStack {
                 Button { showingFileImporter = true } label: {
                     Label("Arquivos", systemImage: "folder")
@@ -268,13 +290,19 @@ struct ContentView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(Theme.accent)
+            .foregroundStyle(Theme.onAccent)
             .disabled(session.isAnalyzing || session.isCameraActive)
-            Toggle("Apple Vision para vídeos com grupo (experimental)", isOn: $session.useVisionForVideo)
-                .disabled(session.isAnalyzing || session.isCameraActive)
-            Toggle("Análise quadro a quadro para grupos", isOn: $session.analyzeGroupFramesIndependently)
-                .disabled(session.isAnalyzing || session.isCameraActive)
-            Text("Para vídeos com várias pessoas, o modo quadro a quadro detecta cada imagem sem depender do quadro anterior. Pode ser mais lento; não garante manter a identidade. Apple Vision tem prioridade se os dois modos estiverem ativos. A câmera ao vivo continua com MediaPipe Lite/Full.")
-                .font(.caption).foregroundStyle(.secondary)
+            if showAdvancedOptions {
+                Text("Escolha o modo antes de importar. Alterar a opção não recalcula o replay; importe novamente.")
+                    .font(.footnote).foregroundStyle(.white.opacity(0.72))
+                    .accessibilityIdentifier("importModeTimingNotice")
+                Toggle("Apple Vision para vídeos com grupo (experimental)", isOn: $session.useVisionForVideo)
+                    .disabled(session.isAnalyzing || session.isCameraActive)
+                Toggle("Análise quadro a quadro para grupos", isOn: $session.analyzeGroupFramesIndependently)
+                    .disabled(session.isAnalyzing || session.isCameraActive)
+                Text("Para vídeos com várias pessoas, o modo quadro a quadro detecta cada imagem sem depender do quadro anterior. Pode ser mais lento; não garante manter a identidade. Apple Vision tem prioridade se os dois modos estiverem ativos. A câmera ao vivo continua com MediaPipe Lite/Full.")
+                    .font(.caption).foregroundStyle(.white.opacity(0.72))
+            }
             #if DEBUG
             if Bundle.main.url(forResource: "pexels-8837118-1280w", withExtension: "mp4") != nil {
                 Button("Ver teste: uma pessoa") { session.testLicensedClip() }
@@ -393,7 +421,8 @@ private extension View {
     func card() -> some View {
         self.frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22))
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.border, lineWidth: 1))
     }
 }
 
@@ -416,17 +445,22 @@ private struct LiveWorkoutScreen: View {
                     .ignoresSafeArea()
                 VStack(spacing: 16) {
                     HStack(alignment: .top, spacing: 12) {
-                        hudValue(title: "REPETIÇÕES", value: "\(session.repetitions)", prominent: true)
+                        hudValue(title: "REPETIÇÕES DETECTADAS", value: "\(session.repetitions)", prominent: true,
+                                 compact: geometry.size.width > geometry.size.height)
                         Spacer(minLength: 4)
                         TimelineView(.periodic(from: .now, by: 1)) { context in
                             let elapsed = session.startedAt.map { max(0, context.date.timeIntervalSince($0)) } ?? 0
-                            hudValue(title: "TEMPO", value: durationText(elapsed), prominent: false)
+                            hudValue(title: "TEMPO", value: durationText(elapsed), prominent: false,
+                                     compact: geometry.size.width > geometry.size.height)
                         }
                     }
                     HStack(spacing: 8) {
                         if session.isStarting { ProgressView().tint(.white) }
                         if session.isRecordingVideo { Image(systemName: "record.circle.fill").foregroundStyle(.red) }
-                        Text(session.isStarting ? "Preparando câmera…" : session.phaseText).lineLimit(2)
+                        Image(systemName: session.trackingDecision.isSelected ? "scope" : "pause.circle.fill")
+                            .foregroundStyle(session.trackingDecision.isSelected ? Theme.accent : .yellow)
+                        Text(session.isStarting ? "Preparando câmera…" : trackingStatus)
+                            .lineLimit(3)
                         Spacer(minLength: 0)
                     }
                     .font(.subheadline.weight(.semibold))
@@ -445,7 +479,7 @@ private struct LiveWorkoutScreen: View {
                         Label("Parar treino", systemImage: "stop.fill")
                             .font(.headline)
                             .frame(maxWidth: geometry.size.width > geometry.size.height ? 280 : .infinity,
-                                   minHeight: 58)
+                                   minHeight: 64)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.white)
@@ -460,13 +494,23 @@ private struct LiveWorkoutScreen: View {
         .onAppear { session.markLiveScreenVisible() }
     }
 
-    private func hudValue(title: String, value: String, prominent: Bool) -> some View {
+    private var trackingStatus: String {
+        switch session.trackingDecision {
+        case .selected: "Atleta em foco · \(session.phaseText)"
+        case .noSelection: "Toque em Selecionar no atleta"
+        case .uncertain: "Foco incerto · contagem pausada"
+        case .reselectionRequired: "Atleta perdido · selecione novamente"
+        }
+    }
+
+    private func hudValue(title: String, value: String, prominent: Bool, compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.caption2.weight(.bold)).tracking(1)
             Text(value)
-                .font(.system(size: prominent ? 48 : 34, weight: .bold, design: .rounded))
+                .font(.system(size: prominent ? (compact ? 52 : 72) : (compact ? 30 : 36),
+                              weight: .bold, design: .rounded))
                 .monospacedDigit()
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.55)
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 16)
@@ -493,11 +537,11 @@ private struct TargetSelectionOverlay: View {
             ForEach(candidates, id: \.index) { candidate in
                 let selected = tracking == .selected(index: candidate.index)
                 Button { select(candidate) } label: {
-                    Text(selected ? "✓" : "Selecionar")
+                    Text(selected ? "Em foco" : "Selecionar")
                         .font(.caption.weight(.bold))
                         .padding(.horizontal, 12)
                         .frame(minWidth: 58, minHeight: 52)
-                        .background(selected ? Color.green.opacity(0.9) : Color.orange.opacity(0.95),
+                        .background(selected ? Theme.accent : Color.white.opacity(0.95),
                                     in: Capsule())
                         .foregroundStyle(.black)
                 }
@@ -523,7 +567,7 @@ private struct DetectedPeopleOverlay: View {
             let offsetY = (geometry.size.height - imageHeight) / 2
             ForEach(candidates, id: \.index) { candidate in
                 RoundedRectangle(cornerRadius: 6)
-                    .stroke(.orange, lineWidth: 2)
+                    .stroke(Theme.accent, lineWidth: 2)
                     .frame(width: CGFloat(candidate.width) * imageWidth,
                            height: CGFloat(candidate.height) * imageHeight)
                     .position(x: offsetX + CGFloat(candidate.centerX) * imageWidth,

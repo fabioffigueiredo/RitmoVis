@@ -35,20 +35,56 @@ final class WorkoutFlowUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Seu treino, em foco."].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Posicione. Selecione. Treine."].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Iniciar treino"].exists)
         XCTAssertTrue(app.staticTexts["Analisar vídeo recebido"].exists)
         let modeTiming = app.staticTexts["importModeTimingNotice"]
+        XCTAssertFalse(modeTiming.exists)
+        app.buttons["Opções avançadas"].tap()
         XCTAssertTrue(modeTiming.exists)
         XCTAssertTrue(modeTiming.label.contains("antes de importar"))
         XCTAssertTrue(modeTiming.label.contains("importe novamente"))
         XCTAssertTrue(app.buttons["Arquivos"].exists)
         XCTAssertTrue(app.buttons["Fotos"].exists)
-        XCTAssertTrue(app.switches["Análise quadro a quadro para grupos"].exists)
         app.tabBars.buttons["Histórico"].tap()
         XCTAssertTrue(app.navigationBars["Histórico"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Treino"].tap()
         XCTAssertTrue(app.buttons["Iniciar treino"].exists)
+    }
+
+    func testDemoPreparationKeepsTechnicalOptionsOutOfPrimaryFlow() {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["Posicione. Selecione. Treine."].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Iniciar treino"].exists)
+        XCTAssertTrue(app.buttons["Opções avançadas"].exists)
+        XCTAssertFalse(app.segmentedControls.buttons["Lite"].exists)
+        app.buttons["Opções avançadas"].tap()
+        XCTAssertTrue(app.segmentedControls.buttons["Lite"].waitForExistence(timeout: 5))
+    }
+
+    func testDemoResultCallsCountsDetectedNotCorrect() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--qa-synthetic-camera", "--qa-synthetic-targets"]
+        app.launch()
+        app.buttons["Iniciar treino"].tap()
+        XCTAssertTrue(app.staticTexts["REPETIÇÕES DETECTADAS"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Parar treino"].exists)
+    }
+
+    func testLargeTextKeepsStartAndStopReachable() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryXXXL",
+                               "--qa-synthetic-camera"]
+        app.launch()
+        let start = app.buttons["Iniciar treino"]
+        XCTAssertTrue(start.waitForExistence(timeout: 10))
+        XCTAssertTrue(start.isHittable)
+        start.tap()
+        let stop = app.buttons["Parar treino"]
+        XCTAssertTrue(stop.waitForExistence(timeout: 10))
+        XCTAssertTrue(stop.isHittable)
     }
 
     func testImmersiveControlsRemainAvailableAfterRotation() {
@@ -63,7 +99,7 @@ final class WorkoutFlowUITests: XCTestCase {
         start.tap()
         let stop = app.buttons["Parar treino"]
         XCTAssertTrue(stop.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["REPETIÇÕES"].exists)
+        XCTAssertTrue(app.staticTexts["REPETIÇÕES DETECTADAS"].exists)
         XCTAssertTrue(app.staticTexts["TEMPO"].exists)
 
         XCUIDevice.shared.orientation = .landscapeLeft
