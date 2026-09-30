@@ -2,6 +2,75 @@ import XCTest
 
 @MainActor
 final class WorkoutFlowUITests: XCTestCase {
+    func testRecordedVideoInputIsLabelledAndAllowsSelectionAndStop() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--qa-recorded-camera=pexels-8837118-1280w.mp4"]
+        app.launch()
+        let source = app.staticTexts["recordedCameraSourceNotice"]
+        XCTAssertTrue(source.waitForExistence(timeout: 10))
+        XCTAssertTrue(source.label.contains("não é câmera ao vivo"))
+        let select = app.buttons["Selecionar pessoa no quadro"].firstMatch
+        XCTAssertTrue(select.waitForExistence(timeout: 15))
+        select.tap()
+        XCTAssertTrue(app.buttons["Pessoa acompanhada"].waitForExistence(timeout: 5))
+        let portrait = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        portrait.name = "Recorded input — portrait — not live camera"
+        portrait.lifetime = .keepAlways
+        add(portrait)
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let rotated = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            app.frame.width > app.frame.height
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [rotated], timeout: 5), .completed)
+        let stop = app.buttons["Parar treino"]
+        XCTAssertTrue(stop.isHittable)
+        XCTAssertTrue(source.exists)
+        let landscape = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        landscape.name = "Recorded input — landscape — not live camera"
+        landscape.lifetime = .keepAlways
+        add(landscape)
+        stop.tap()
+        XCTAssertTrue(app.buttons["Iniciar treino"].waitForExistence(timeout: 10))
+    }
+
+    func testGestureInstructionsStayVisibleWithManualStopInBothOrientations() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--qa-synthetic-camera", "--qa-synthetic-targets"]
+        app.launch()
+        app.buttons["Opções avançadas"].tap()
+        let toggle = app.switches["gestureControlToggle"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+        XCTAssertEqual(toggle.value as? String, "0")
+        for _ in 0..<8 {
+            let y = toggle.frame.midY
+            let upper = app.navigationBars.firstMatch.frame.maxY + 24
+            let lower = app.buttons["Iniciar treino"].frame.minY - 24
+            if toggle.isHittable && y >= upper && y <= lower { break }
+            let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: y > lower ? 0.3 : 0.7))
+            from.press(forDuration: 0.05, thenDragTo: to)
+        }
+        XCTAssertTrue(toggle.isHittable)
+        let control = toggle.switches.firstMatch
+        if control.exists { control.tap() } else { toggle.tap() }
+        XCTAssertEqual(toggle.value as? String, "1", "Gesto deve estar habilitado antes de abrir a interface")
+        app.buttons["Iniciar treino"].tap()
+        let instructions = app.staticTexts["gestureInstructions"]
+        XCTAssertTrue(instructions.waitForExistence(timeout: 10))
+        XCTAssertTrue(instructions.label.contains("mão aberta"))
+        XCTAssertTrue(instructions.label.contains("2 s"))
+        let select = app.buttons["Selecionar pessoa no quadro"]
+        select.tap()
+        XCTAssertTrue(instructions.label.contains("punho fechado"))
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCTAssertTrue(app.buttons["Parar treino"].isHittable)
+        XCTAssertTrue(instructions.exists)
+        app.buttons["Parar treino"].tap()
+        XCTAssertTrue(app.buttons["Iniciar treino"].waitForExistence(timeout: 10))
+    }
+
     func testGroupSelectionKeepsReplayAndShowsAnalysis() {
         let app = XCUIApplication()
         // Exercise the real cached replay with MediaPipe on Simulator.

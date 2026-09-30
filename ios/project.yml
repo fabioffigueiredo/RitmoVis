@@ -15,6 +15,7 @@ schemes:
       targets:
         - SquatCounterCoreTests
         - SquatCounterUITests
+        - SquatCounterInferenceTests
 targets:
   SquatCounter:
     type: application
@@ -58,3 +59,16 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.fabiofigueiredo.ritmovis.dev.uitests
         GENERATE_INFOPLIST_FILE: YES
+  SquatCounterInferenceTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests/SquatCounterInferenceTests]
+    dependencies:
+      - target: SquatCounter
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        # The app already force-loads MediaPipe's static graph registry. Doing
+        # that again in its hosted test bundle aborts on duplicate registration.
+        OTHER_LDFLAGS[sdk=iphonesimulator*]: ''
+        OTHER_LDFLAGS[sdk=iphoneos*]: ''

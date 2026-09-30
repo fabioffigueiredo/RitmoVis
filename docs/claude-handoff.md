@@ -2,10 +2,14 @@
 
 **Atualizado em:** 30/09/2026
 
+**Captura com fonte gravada:** [modo DEBUG e evidência](qa-recorded-camera-2026-09-30.md). Dois clipes Pexels foram copiados para `Documents/QAPrivateClips` do iPhone de fabio, sem apagar originais. `--qa-recorded-camera` fornece quadros locais à fila ao vivo e mostra a fonte na tela; não abre lentes nem persiste treino. O teste UI verifica aviso/seleção/Parar e gera capturas; a política de Histórico tem teste separado. App atualizado instalado, índice do Histórico preservado; teste físico bloqueado por telefone travado e runner sem perfil. **Ainda não houve execução do clipe nesta versão no telefone.** Esse modo não valida câmera pareada, gestos à distância ou M2.
+
+**Último incremento — gestos aprovados:** [implementação, QA e próximos ensaios](qa-hand-gestures-2026-09-30.md). Opção nas configurações avançadas, desligada por padrão, somente ao vivo: palma aberta/punho fechado acima do ombro por 2 s, progresso e confirmação falada. Trinta segundos para seleção inicial; depois da perda, gesto não troca atleta. Dois defeitos encontrados por Astra receberam regressões (rival cortado e perda entre leituras de mão). Pipeline usa MediaPipe Gesture Recognizer versão 1 local, sem retreinar. Conferir relatório de execução/instalação; teste de UI não é câmera física nem gate de box.
+
 **Branch de trabalho:** `feat/m2-android-a0`
 **Objetivo imediato:** tornar a seleção de uma pessoa em vídeo de grupo mensurável e segura antes de ampliar exercícios, distribuir beta ou iniciar Android.
 
-**Última solicitação — teste no box:** [investigação de 30/09](box-investigation-2026-09-30.md). Usuário precisa iniciar à distância e manter um atleta numa sala com várias pessoas. Duas sessões longas do Histórico tiveram zero eventos e predominância de reseleção; dados privados inspecionados, sem anotação completa ou causa por quadro adjudicada. Gesto + detector/rastreador separados + ROI exigem desenho aprovado. Revisão Astra reforçou recuperar alvo anterior sem substituição por colega. Não confundir pareamento com espelhamento, replay com reanálise ou mais vídeos com retreinamento.
+**Solicitação anterior — teste no box:** [investigação de 30/09](box-investigation-2026-09-30.md). Usuário precisa iniciar à distância e manter um atleta numa sala com várias pessoas. Duas sessões longas do Histórico tiveram zero eventos e predominância de reseleção; dados privados inspecionados, sem anotação completa ou causa por quadro adjudicada. Detector/rastreador separados + ROI ainda exigem desenho aprovado. Gesto foi aprovado e implementado posteriormente como experimento, não solução de identidade. Revisão Astra reforçou recuperar alvo anterior sem substituição por colega. Não confundir pareamento com espelhamento, replay com reanálise ou mais vídeos com retreinamento.
 
 **Incremento de 30/09:** [relatório da demonstração](demo-box-2026-09-30.md). Há avaliador de clipe completo em `tools/evaluate-complete-clip.mjs`, tema temporário escuro/ciano, Lite/Full e modos experimentais recolhidos, espera de 3 s após seleção ao vivo e núcleo `PushUpCounter` **não integrado**. O teste sintético do contador de flexão não aprova flexão na UI. Primeiro obter rótulos privados completos e repetir o pipeline; M0/M2 não passaram. O modo de câmera preto em pareamento permanece questão separada. Para reconstruir o workspace após novos arquivos, executar `xcodegen generate` e `pod install --deployment`.
 
@@ -37,7 +41,7 @@
 | Uma pessoa | MediaPipe Lite/Full, máquina de estados de agachamento e avaliação de eventos | clipe local de QA contou 4 ciclos; não há corpus anotado suficiente para alegação de precisão |
 | Grupo / M2 | múltiplas poses, seleção explícita, `TargetTracker` com geometria + aparência temporária, abstenção e `OfflineTargetAnalyzer` | reensaio de cinco seleções privadas no simulador; cobertura melhorou em algumas e não em outras; ainda não há verdade humana de ID; M2 **não passou** |
 | Contrato iOS/Android | `fixtures/tracking-v1-synthetic.json` e teste Swift | sintético; Android ainda não foi criado/testado |
-| QA automatizado | 66 testes de núcleo + 5 UI + 15 Node | 71/71 Xcode no simulador em 29/09 e 15/15 Node; UI de grupo usa MediaPipe, Vision é ensaiado no iPhone físico |
+| QA automatizado | 117 testes de núcleo + 10 UI + 7 hospedados + 21 Node | 134/134 Xcode no simulador em 30/09, zero skips; 21/21 Node. Novo runner UI físico bloqueado por assinatura; build/instalação do app passou, abertura bloqueada por telefone travado |
 
 ## O que não afirmar
 

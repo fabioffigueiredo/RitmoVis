@@ -4,6 +4,8 @@ Estado: falha de acompanhamento observada; causa específica por quadro ainda n�
 
 ## Evidência
 
+**Atualização posterior:** o usuário aprovou palma aberta/punho fechado sustentados, não o gesto de um braço descrito como hipótese abaixo. O [incremento experimental](qa-hand-gestures-2026-09-30.md) foi implementado depois desta investigação; não resolve a perda de identidade nem aprova detector/ROI. Os dados do box abaixo são anteriores a esse incremento.
+
 O **iPhone de fabio físico** estava conectado; os simuladores estavam desligados no início da investigação. Xcode mostrava a tela de boas-vindas; duas tentativas de controle do Device Hub excederam o tempo de resposta. Não foi possível confirmar qual replay estava aberto. O contêiner foi lido por `devicectl`, sem reiniciar/reinstalar o app ou cancelar reprodução.
 
 Índice, duas gravações longas e sidecars foram copiados, sem remover originais, para `~/Library/Application Support/RitmoVis/qa-private/box-20260930/`. Nenhuma mídia pessoal entra no Git. O Histórico registra seis gravações novas na manhã de 30/09, todas com zero eventos. Casos inspecionados:

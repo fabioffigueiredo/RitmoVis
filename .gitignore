@@ -8,6 +8,7 @@ ios/SquatCounter.xcodeproj/
 ios/SquatCounter.xcworkspace/
 ios/Sources/SquatCounter/Resources/Models/*.task
 ios/Sources/SquatCounter/Resources/*.mp4
+ios/Sources/SquatCounter/Resources/gesture-fixtures/
 qa-private/
 *.MOV
 *.mov

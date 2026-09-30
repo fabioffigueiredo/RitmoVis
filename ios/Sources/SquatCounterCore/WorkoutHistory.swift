@@ -4,6 +4,7 @@ import Foundation
 /// Call only from DEBUG builds; normal app launches always persist workouts.
 public enum WorkoutHistoryPolicy {
     public static func shouldPersist(launchArguments: [String]) -> Bool {
+        if launchArguments.contains(where: { $0.hasPrefix("--qa-recorded-camera=") }) { return false }
         // Recording diagnostics need their history sidecar to keep replay files linked.
         let diagnosticArguments: Set<String> = ["--qa-camera", "--qa-front-camera"]
         return diagnosticArguments.isDisjoint(with: launchArguments)

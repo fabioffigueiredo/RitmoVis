@@ -28,3 +28,8 @@ download_verified pose_landmarker_lite.task \
 download_verified pose_landmarker_full.task \
   4eaa5eb7a98365221087693fcc286334cf0858e2eb6e15b506aa4a7ecdcec4ad \
   https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task
+
+# Optional experimental hand controls; pinned version 1, observed 2026-09-30.
+download_verified gesture_recognizer.task \
+  97952348cf6a6a4915c2ea1496b4b37ebabc50cbbf80571435643c455f2b0482 \
+  https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task

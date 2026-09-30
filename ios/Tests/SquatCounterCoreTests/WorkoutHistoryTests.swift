@@ -3,6 +3,10 @@ import XCTest
 @testable import SquatCounterCore
 
 final class WorkoutHistoryTests: XCTestCase {
+    func testPrerecordedCameraQAIsNotAWorkoutEvenIfRecordingWasConfigured() {
+        XCTAssertFalse(WorkoutHistoryPolicy.shouldPersist(launchArguments:
+            ["--qa-recorded-camera=private.mov", "--qa-record-camera"]))
+    }
     func testAutomatedCameraDiagnosticsDoNotCreateWorkoutHistory() {
         XCTAssertTrue(WorkoutHistoryPolicy.shouldPersist(launchArguments: []))
         XCTAssertTrue(WorkoutHistoryPolicy.shouldPersist(launchArguments: ["--qa-clip-lite"]))

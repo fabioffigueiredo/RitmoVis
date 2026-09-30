@@ -3,6 +3,9 @@ use_frameworks!
 
 target 'SquatCounter' do
   pod 'MediaPipeTasksVision'
+  target 'SquatCounterInferenceTests' do
+    inherit! :search_paths
+  end
 end
 
 target 'SquatCounterCoreTests' do

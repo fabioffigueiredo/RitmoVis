@@ -1,6 +1,25 @@
 import AVFoundation
 import SwiftUI
 
+#if DEBUG
+struct RecordedVideoPreview: UIViewRepresentable {
+    let player: AVPlayer
+    func makeUIView(context: Context) -> RecordedPreviewView {
+        let view = RecordedPreviewView()
+        view.playerLayer.player = player
+        view.playerLayer.videoGravity = .resizeAspect
+        return view
+    }
+    func updateUIView(_ view: RecordedPreviewView, context: Context) {
+        if view.playerLayer.player !== player { view.playerLayer.player = player }
+    }
+}
+final class RecordedPreviewView: UIView {
+    override class var layerClass: AnyClass { AVPlayerLayer.self }
+    var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+}
+#endif
+
 struct CameraPreview: UIViewRepresentable {
     let session: AVCaptureSession
     let mirrored: Bool

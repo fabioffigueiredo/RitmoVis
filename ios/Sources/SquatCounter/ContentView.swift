@@ -144,6 +144,15 @@ struct ContentView: View {
                             value: $session.plan.duration, in: 10...3600, step: 10)
                     Text("O tempo de referência não encerra o treino sozinho.")
                         .font(.footnote).foregroundStyle(.white.opacity(0.72))
+                    Toggle("Comandos por gesto · experimental", isOn: $session.gestureControlEnabled)
+                        .tint(Theme.accent)
+                        .accessibilityIdentifier("gestureControlToggle")
+                    if session.gestureControlEnabled {
+                        Text("Apoie o celular e afaste-se até aparecer de corpo inteiro. Levante uma mão acima do ombro, palma aberta para a câmera, por 2 s para selecionar e iniciar; punho fechado por 2 s para parar. Aguarde a confirmação. Não se aproxime para mostrar a mão.")
+                            .font(.footnote).foregroundStyle(.white.opacity(0.82))
+                        Text("Só na câmera ao vivo. Se a mão não for legível ou o foco for perdido, use os botões. Este experimento não corrige o rastreamento no box.")
+                            .font(.footnote).foregroundStyle(.yellow)
+                    }
                 }
                 .padding(.top, 12)
             }
@@ -370,6 +379,11 @@ struct ContentView: View {
         guard !didRunQA else { return }
         didRunQA = true
         let args = ProcessInfo.processInfo.arguments
+        if args.contains(where: { $0.hasPrefix("--qa-recorded-camera=") }) {
+            session.gestureControlEnabled = args.contains("--qa-gestures")
+            session.startCamera()
+            return
+        }
         if args.contains(where: { $0.hasPrefix("--qa-private-clip=") }) {
             let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             for name in ["qa-clip-diagnostics.json", "qa-clip-failure.json"] {
@@ -433,9 +447,7 @@ private struct LiveWorkoutScreen: View {
         GeometryReader { geometry in
             ZStack {
                 Color.black.ignoresSafeArea()
-                CameraPreview(session: session.captureSession, mirrored: session.cameraChoice == .front,
-                              lockedRotationAngle: session.lockedPreviewAngle)
-                    .ignoresSafeArea()
+                cameraImage
                 PoseOverlay(landmarks: session.landmarks, imageAspectRatio: session.imageAspectRatio)
                     .ignoresSafeArea()
                 TargetSelectionOverlay(candidates: session.targetCandidates,
@@ -454,6 +466,16 @@ private struct LiveWorkoutScreen: View {
                                      compact: geometry.size.width > geometry.size.height)
                         }
                     }
+                    #if DEBUG
+                    if session.recordedCameraPlayer != nil {
+                        Text("TESTE · vídeo gravado — não é câmera ao vivo")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.yellow)
+                            .padding(8)
+                            .background(.black.opacity(0.85), in: Capsule())
+                            .accessibilityIdentifier("recordedCameraSourceNotice")
+                    }
+                    #endif
                     HStack(spacing: 8) {
                         if session.isStarting { ProgressView().tint(.white) }
                         if session.isRecordingVideo { Image(systemName: "record.circle.fill").foregroundStyle(.red) }
@@ -475,6 +497,22 @@ private struct LiveWorkoutScreen: View {
                             .background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 14))
                     }
                     Spacer()
+                    if session.gestureControlEnabled {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(gestureInstruction)
+                                .font(.subheadline.weight(.semibold))
+                                .accessibilityIdentifier("gestureInstructions")
+                            if session.gestureProgress > 0 {
+                                ProgressView(value: session.gestureProgress)
+                                    .tint(Theme.accent)
+                                    .accessibilityLabel("Confirmação do gesto")
+                                    .accessibilityValue("\(Int(session.gestureProgress * 100)) por cento")
+                            }
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 14))
+                    }
                     Button { session.stop() } label: {
                         Label("Parar treino", systemImage: "stop.fill")
                             .font(.headline)
@@ -500,6 +538,34 @@ private struct LiveWorkoutScreen: View {
         case .noSelection: "Toque em Selecionar no atleta"
         case .uncertain: "Foco incerto · contagem pausada"
         case .reselectionRequired: "Atleta perdido · selecione novamente"
+        }
+    }
+
+    @ViewBuilder private var cameraImage: some View {
+        #if DEBUG
+        if let player = session.recordedCameraPlayer {
+            RecordedVideoPreview(player: player).ignoresSafeArea()
+        } else {
+            CameraPreview(session: session.captureSession, mirrored: session.cameraChoice == .front,
+                          lockedRotationAngle: session.lockedPreviewAngle).ignoresSafeArea()
+        }
+        #else
+        CameraPreview(session: session.captureSession, mirrored: session.cameraChoice == .front,
+                      lockedRotationAngle: session.lockedPreviewAngle).ignoresSafeArea()
+        #endif
+    }
+
+    private var gestureInstruction: String {
+        if let notice = session.gestureNotice { return notice }
+        switch session.trackingDecision {
+        case .noSelection:
+            return session.targetCandidates.isEmpty
+                ? "Enquadre o corpo inteiro. Depois levante a mão aberta para a câmera por 2 s."
+                : "Levante a mão aberta acima do ombro por 2 s. Aguarde a confirmação ou toque em Selecionar."
+        case .selected:
+            return "Para parar: levante o punho fechado acima do ombro por 2 s. Se não responder, use Parar."
+        case .uncertain, .reselectionRequired:
+            return "Contagem pausada. Use Selecionar para confirmar o atleta; o gesto não troca de pessoa."
         }
     }
 

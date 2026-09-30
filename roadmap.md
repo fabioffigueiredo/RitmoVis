@@ -1,6 +1,10 @@
 # Evolução testada do RitmoVis
 
-**Prioridade após ensaio no box — 30/09:** [investigação e proposta](docs/box-investigation-2026-09-30.md). Primeiro explicar a primeira perda nos novos vídeos, rotular ciclos e comparar detector independente + pose no atleta contra baseline. Início por gesto com confirmação é proposta; recuperação do atleta não é troca livre de alvo. Câmera fixa e uma pessoa são a primeira promessa sugerida; câmera móvel/turma/técnica ficam para fases posteriores. Não há aprovação de nova arquitetura ou gesto implementado.
+**QA de captura gravada — 30/09:** [reprodução no iPhone físico](docs/qa-recorded-camera-2026-09-30.md). Ferramenta DEBUG para exercitar o caminho de inferência ao vivo sem lentes, com aviso de vídeo gravado e Histórico preservado. Não satisfaz o gate de câmera real nem o de gestos/identidade; ensaio físico dos comandos e corpus independente continuam necessários.
+
+**Incremento de controle — 30/09:** [gestos e QA](docs/qa-hand-gestures-2026-09-30.md). Opção experimental de palma aberta para selecionar/iniciar e punho fechado para parar, com sustentação, confirmação e instruções. Implementação iOS; reconhecimento à distância e falsos comandos ainda exigem ensaio físico. Não altera gates M0/M2 nem entrega controle por gesto no Android.
+
+**Prioridade após ensaio no box — 30/09:** [investigação e proposta](docs/box-investigation-2026-09-30.md). Primeiro explicar a primeira perda nos novos vídeos, rotular ciclos e comparar detector independente + pose no atleta contra baseline. Recuperação do atleta não é troca livre de alvo. Câmera fixa e uma pessoa são a primeira promessa sugerida; câmera móvel/turma/técnica ficam para fases posteriores. Não há aprovação da nova arquitetura detector/ROI.
 
 **Incremento de 30/09/2026 para demonstração:** [escopo, método e gates](docs/demo-box-2026-09-30.md). Fluxo de preparação/treino/resultado simplificado e espera de três segundos após selecionar o atleta ao vivo; a escolha ainda ocorre **depois** de abrir a câmera, não numa prévia anterior ao início. Avaliador de clipe completo foi implementado e testado com fixtures sintéticos, mas falta aplicá-lo a anotações humanas independentes. O contador de flexão é apenas núcleo experimental testado com ângulos sintéticos, **não opção liberada**. Próxima prioridade permanece M0/M2 e QA físico, antes de beta iOS ou Android.
 

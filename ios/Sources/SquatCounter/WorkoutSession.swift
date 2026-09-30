@@ -49,6 +49,8 @@ private struct QACameraReport: Codable {
     let model: String
     let timing: CameraStartupTiming
     let metrics: BenchmarkMetrics
+    let repetitions: Int
+    let events: [RepEvent]
     let warning: String?
     let captureRunning: Bool
     let captureInterrupted: Bool
@@ -124,6 +126,9 @@ private struct TimedPose: Sendable {
     let event: RepEvent?
     let metrics: BenchmarkMetrics
     var poseOptions: [PoseFrame] = []
+    var gestureCommand: HandGestureCommand?
+    var gestureProgress = 0.0
+    var gestureNotice: String?
 }
 
 private final class CameraFrameDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
@@ -183,6 +188,10 @@ private final class CaptureSessionBox: @unchecked Sendable {
     private var videoCalibrationUsed = "default-155-105"
     @Published var cameraChoice: CameraChoice = .back
     @Published var recordWorkout = false
+    @Published var gestureControlEnabled = false
+    @Published private(set) var gestureProgress = 0.0
+    @Published private(set) var gestureNotice: String?
+    private let gestureSpeech = AVSpeechSynthesizer()
     @Published var exercise: Exercise = .bodyweightSquat
     @Published var plan = WorkoutPlan()
     @Published var isRunning = false
@@ -208,6 +217,11 @@ private final class CaptureSessionBox: @unchecked Sendable {
     @Published private(set) var recordingNotice: String?
     @Published private(set) var isHistoricalReplay = false
     @Published private(set) var lockedPreviewAngle: CGFloat?
+    #if DEBUG
+    @Published private(set) var recordedCameraPlayer: AVPlayer?
+    private var recordedCameraSource: RecordedCameraSource?
+    private var recordedCameraRequestedSelection = false
+    #endif
 
     private var worker: InferenceWorker?
     private var token = UUID()
@@ -258,6 +272,10 @@ private final class CaptureSessionBox: @unchecked Sendable {
     func startCamera() {
         guard !isRunning, !isStarting, !isFinalizingRecording else { return }
         #if DEBUG
+        if let argument = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--qa-recorded-camera=") }) {
+            startRecordedCamera(named: String(argument.dropFirst("--qa-recorded-camera=".count)))
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("--qa-synthetic-camera") {
             endSession()
             startupTiming.start(at: ProcessInfo.processInfo.systemUptime)
@@ -355,6 +373,58 @@ private final class CaptureSessionBox: @unchecked Sendable {
         guard isStarting || isCameraActive else { return }
         startupTiming.visualResponse(at: ProcessInfo.processInfo.systemUptime)
     }
+
+    #if DEBUG
+    /// Feed a labelled recorded source through the capture inference path without using lenses.
+    private func startRecordedCamera(named name: String) {
+        guard name == URL(fileURLWithPath: name).lastPathComponent, !name.isEmpty else {
+            startError = "Nome de vídeo de teste inválido"; return
+        }
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let privateURL = documents.appendingPathComponent("QAPrivateClips").appendingPathComponent(name)
+        let bundledURL = Bundle.main.url(forResource: URL(fileURLWithPath: name).deletingPathExtension().lastPathComponent,
+                                         withExtension: URL(fileURLWithPath: name).pathExtension)
+        guard let url = FileManager.default.fileExists(atPath: privateURL.path) ? privateURL : bundledURL else {
+            startError = "Vídeo de teste ausente. Envie-o para QAPrivateClips."; return
+        }
+        endSession()
+        let id = token
+        startupTiming.start(at: ProcessInfo.processInfo.systemUptime)
+        isStarting = true
+        cameraWarning = nil; startError = nil; workoutSummary = nil; replayURL = nil
+        recordedCameraRequestedSelection = false
+        captureEventLog = ["qa-source:prerecorded-video:\(name)"]
+        do {
+            try prepareWorker(id: id, videoURL: nil)
+            let source = RecordedCameraSource(url: url) { [weak self] sample in
+                guard let self, self.token == id else { return }
+                if self.isStarting {
+                    self.startupTiming.firstFrame(at: ProcessInfo.processInfo.systemUptime)
+                    self.isStarting = false; self.isRunning = true; self.startedAt = Date()
+                }
+                self.worker?.enqueue(sample)
+            } onEnd: { [weak self] in
+                guard let self, self.token == id else { return }
+                // Stop producing frames now, but preserve the token and worker
+                // until the terminal accepted result reaches the observable state.
+                self.recordedCameraSource?.stop()
+                guard let worker = self.worker else { self.stop(); return }
+                worker.drainLiveResults { [weak self] in
+                    guard let self, self.token == id else { return }
+                    self.stop()
+                }
+            }
+            recordedCameraSource = source
+            recordedCameraPlayer = source.player
+            // Marks a frame source active for immersive controls/idle timer, not AVCaptureSession.
+            setCameraActive(true)
+            source.start()
+        } catch {
+            endSession()
+            startError = error.localizedDescription
+        }
+    }
+    #endif
 
     func selectPerson(_ candidate: PoseCandidate) {
         #if DEBUG
@@ -729,6 +799,11 @@ private final class CaptureSessionBox: @unchecked Sendable {
     }
 
     private func endSession() {
+        #if DEBUG
+        recordedCameraSource?.stop()
+        recordedCameraSource = nil
+        recordedCameraPlayer = nil
+        #endif
         token = UUID()
         isHistoricalReplay = false
         isStarting = false
@@ -876,10 +951,12 @@ private final class CaptureSessionBox: @unchecked Sendable {
     private func saveQACameraReportIfRequested() {
         let args = ProcessInfo.processInfo.arguments
         guard args.contains("--qa-camera") || args.contains("--qa-front-camera")
-                || args.contains("--qa-record-camera") || args.contains("--qa-record-front-camera") else { return }
+                || args.contains("--qa-record-camera") || args.contains("--qa-record-front-camera")
+                || args.contains(where: { $0.hasPrefix("--qa-recorded-camera=") }) else { return }
         let report = QACameraReport(recordedAt: Date(), camera: cameraChoice.rawValue,
                                     model: (modelUsed ?? model).rawValue,
                                     timing: startupTiming, metrics: metrics,
+                                    repetitions: repetitions, events: events,
                                     warning: cameraWarning,
                                     captureRunning: captureSession.isRunning,
                                     captureInterrupted: captureSession.isInterrupted,
@@ -896,6 +973,7 @@ private final class CaptureSessionBox: @unchecked Sendable {
 
     private func resetResults() {
         repetitions = 0; events = []; landmarks = []; imageAspectRatio = 1
+        gestureProgress = 0; gestureNotice = nil
         targetCandidates = []; trackingDecision = .noSelection
         metrics = BenchmarkMetrics(); processedFrames = 0; droppedFrames = 0
         startedAt = nil
@@ -916,6 +994,7 @@ private final class CaptureSessionBox: @unchecked Sendable {
         let newWorker = try InferenceWorker(model: model,
                                              useVisionForVideo: vision,
                                              hybridExperiment: hybrid, independentFrameExperiment: independent,
+                                             gestureControlEnabled: videoURL == nil && gestureControlEnabled,
                                              requiresExplicitSelection: videoURL == nil) { [weak self] result in
             guard let self, self.token == id, videoURL == nil else { return }
             self.apply(result)
@@ -923,6 +1002,29 @@ private final class CaptureSessionBox: @unchecked Sendable {
             if self.activeRecordingURL != nil && self.movieOutput.isRecording {
                 self.liveRecordingResults.append(result)
             }
+            if let command = result.gestureCommand {
+                #if DEBUG
+                if self.recordedCameraPlayer != nil {
+                    self.captureEventLog.append("gesture:\(command):\(result.pts)")
+                }
+                #endif
+                let utterance = AVSpeechUtterance(string: command == .stop
+                    ? "Treino encerrado" : "Atleta selecionado. Prepare-se para começar.")
+                utterance.voice = AVSpeechSynthesisVoice(language: "pt-BR")
+                self.gestureSpeech.speak(utterance)
+                if command == .stop { self.stop() }
+            }
+            #if DEBUG
+            if self.recordedCameraPlayer != nil, !self.recordedCameraRequestedSelection,
+               ProcessInfo.processInfo.arguments.contains("--qa-recorded-select"),
+               result.pts >= 0.5, let candidate = result.candidates.min(by: {
+                   abs($0.centerX - 0.5) < abs($1.centerX - 0.5)
+               }) {
+                self.recordedCameraRequestedSelection = true
+                self.captureEventLog.append("qa-manual-selection:\(candidate.index):\(result.pts)")
+                self.worker?.selectPerson(candidate)
+            }
+            #endif
         } complete: { [weak self] rawResults, errorMessage in
             guard let self, self.token == id, let videoURL else { return }
             if let errorMessage {
@@ -1041,6 +1143,8 @@ private final class CaptureSessionBox: @unchecked Sendable {
         trackingDecision = isChoosingVideoPerson && importedVideoHasMultiplePeople ? .noSelection : result.tracking
         imageAspectRatio = result.frame.imageAspectRatio
         repetitions = isChoosingVideoPerson && importedVideoHasMultiplePeople ? 0 : result.count
+        gestureProgress = result.gestureProgress
+        gestureNotice = result.gestureNotice
         phaseText = isChoosingVideoPerson && importedVideoHasMultiplePeople
             ? "Toque na pessoa que será acompanhada" : result.phase
         if !isHistoricalReplay {
@@ -1246,6 +1350,33 @@ private final class SampleBufferBox: @unchecked Sendable {
     init(_ buffer: CMSampleBuffer) { self.buffer = buffer }
 }
 
+#if DEBUG
+/// Delivery boundary between background inference and the observable workout.
+/// Call afterDraining only after the frame source has stopped producing input.
+final class LiveInferenceResultDelivery: @unchecked Sendable {
+    private let pendingUpdates = DispatchGroup()
+
+    func deliver(_ update: @escaping @MainActor @Sendable () async -> Void) {
+        pendingUpdates.enter()
+        Task { @MainActor in
+            await update()
+            pendingUpdates.leave()
+        }
+    }
+
+    func afterDraining(on inferenceQueue: DispatchQueue,
+                       _ completion: @escaping @MainActor @Sendable () -> Void) {
+        // This barrier is submitted behind accepted inference. Its deliveries
+        // have entered the group by the time the barrier runs.
+        inferenceQueue.async { [pendingUpdates] in
+            pendingUpdates.notify(queue: .main) {
+                Task { @MainActor in completion() }
+            }
+        }
+    }
+}
+#endif
+
 private final class InferenceWorker: @unchecked Sendable {
     private let queue = DispatchQueue(label: "pose.inference", qos: .userInitiated)
     private let detector: PoseDetector
@@ -1256,6 +1387,10 @@ private final class InferenceWorker: @unchecked Sendable {
     private var lastCandidateUptime: TimeInterval?
     private var counter = SquatCounter()
     private var selectionReadiness = SelectionReadinessGate(delay: 3)
+    private let gestureDetector: HandGestureDetector?
+    private var gestureControl = HandGestureControl()
+    private var lastGesturePTS: TimeInterval?
+    private var gestureNotice: String?
     private var processed = 0
     private var dropped = 0
     private var firstDetectionError: String?
@@ -1267,6 +1402,9 @@ private final class InferenceWorker: @unchecked Sendable {
     private var inputWidth = 0
     private var inputHeight = 0
     private let cameraSlot = DispatchSemaphore(value: 1)
+    #if DEBUG
+    private let liveResultDelivery = LiveInferenceResultDelivery()
+    #endif
     private let lock = NSLock()
     private var cameraDrops = 0
     private var cancelled = false
@@ -1276,12 +1414,14 @@ private final class InferenceWorker: @unchecked Sendable {
 
     init(model: PoseModel, useVisionForVideo: Bool = false,
          hybridExperiment: Bool = false, independentFrameExperiment: Bool = false,
+         gestureControlEnabled: Bool = false,
          requiresExplicitSelection: Bool,
          update: @escaping @MainActor (TimedPose) -> Void,
          complete: @escaping @MainActor ([TimedPose], String?) -> Void) throws {
         detector = try PoseDetector(model: model, useVisionForVideo: useVisionForVideo,
                                     hybridExperiment: hybridExperiment, independentFrameExperiment: independentFrameExperiment)
         self.requiresExplicitSelection = requiresExplicitSelection
+        gestureDetector = gestureControlEnabled ? try HandGestureDetector() : nil
         self.update = update
         self.complete = complete
     }
@@ -1312,6 +1452,7 @@ private final class InferenceWorker: @unchecked Sendable {
             guard matches.count == 1 else { return }
             self.counter.interruptTracking(at: pts)
             if case .selected = self.tracker.select(matches[0], at: pts) {
+                self.gestureControl.markSelected()
                 self.selectionReadiness.arm(at: pts)
             }
         }
@@ -1327,9 +1468,19 @@ private final class InferenceWorker: @unchecked Sendable {
             guard let self else { return }
             defer { self.cameraSlot.signal() }
             guard !self.isCancelled, let result = self.process(box.buffer) else { return }
+            #if DEBUG
+            self.liveResultDelivery.deliver { self.update(result) }
+            #else
             Task { @MainActor in self.update(result) }
+            #endif
         }
     }
+
+    #if DEBUG
+    func drainLiveResults(_ completion: @escaping @MainActor @Sendable () -> Void) {
+        liveResultDelivery.afterDraining(on: queue, completion)
+    }
+    #endif
 
     func analyzeVideo(at url: URL) {
         queue.async { [weak self] in self?.readVideo(at: url) }
@@ -1385,13 +1536,55 @@ private final class InferenceWorker: @unchecked Sendable {
             lastCandidates = batch.candidates
             lastCandidatePTS = pts
             lastCandidateUptime = ProcessInfo.processInfo.systemUptime
-            let decision: TrackingDecision
+            var decision: TrackingDecision
             if requiresExplicitSelection {
                 decision = tracker.update(batch.candidates, at: pts)
             } else if batch.candidates.count == 1, let only = batch.candidates.first {
                 decision = .selected(index: only.index)
             } else {
                 decision = .noSelection
+            }
+            // Pose runs faster than hand inference. A loss between hand samples
+            // must cancel the pending command immediately, not resume an old hold.
+            if gestureDetector != nil {
+                gestureControl.observePoseFrame(candidates: batch.candidates, tracking: decision, at: pts)
+                switch decision {
+                case .uncertain, .reselectionRequired:
+                    gestureControl.invalidatePendingHold()
+                case let .selected(index):
+                    if !batch.poses.indices.contains(index) || batch.poses[index].kneeAngle == nil {
+                        gestureControl.invalidatePendingHold()
+                    }
+                case .noSelection:
+                    if batch.candidates.isEmpty { gestureControl.invalidatePendingHold() }
+                }
+            }
+            var gestureCommand: HandGestureCommand?
+            if let gestureDetector, lastGesturePTS.map({ pts - $0 >= 0.1 }) ?? true {
+                lastGesturePTS = pts
+                let selectedCandidate: PoseCandidate?
+                if case let .selected(index) = decision {
+                    selectedCandidate = batch.candidates.first { $0.index == index }
+                } else { selectedCandidate = nil }
+                // Initial gesture arming is bounded; tracking loss never opens a new-person path.
+                do {
+                    let observations = try gestureDetector.detect(buffer, batch: batch, timestamp: pts)
+                    gestureCommand = gestureControl.consume(observations,
+                        candidates: batch.candidates, tracking: decision,
+                        selectedCandidate: selectedCandidate, at: pts)
+                    gestureNotice = gestureControl.isInitialSelectionExpired && decision == .noSelection
+                        ? "Janela de gesto encerrada. Use Selecionar ou reinicie o treino." : nil
+                    if case let .select(index) = gestureCommand,
+                       let candidate = batch.candidates.first(where: { $0.index == index }) {
+                        decision = tracker.select(candidate, at: pts)
+                        counter.interruptTracking(at: pts)
+                        selectionReadiness.arm(at: pts)
+                    }
+                } catch {
+                    _ = gestureControl.consume([], candidates: batch.candidates,
+                        tracking: decision, selectedCandidate: selectedCandidate, at: pts)
+                    gestureNotice = "Gesto indisponível. Use Selecionar e Parar na tela."
+                }
             }
             if decision == .reselectionRequired { selectionReadiness.disarm() }
             let selected: PoseFrame?
@@ -1446,8 +1639,10 @@ private final class InferenceWorker: @unchecked Sendable {
             return TimedPose(pts: pts, frame: frame, candidates: batch.candidates,
                              tracking: decision, count: counter.repetitions,
                              phase: phase, event: event, metrics: currentMetrics,
-                             poseOptions: batch.poses)
+                             poseOptions: batch.poses, gestureCommand: gestureCommand,
+                             gestureProgress: gestureControl.holdProgress, gestureNotice: gestureNotice)
         } catch {
+            gestureControl.invalidatePendingHold()
             dropped += 1
             if firstDetectionError == nil { firstDetectionError = error.localizedDescription }
             return nil

@@ -1,8 +1,14 @@
 # Estado de QA — RitmoVis
 
+## Gestos e fonte gravada de captura — 30/09, incremento posterior
+
+[Gestos experimentais](qa-hand-gestures-2026-09-30.md) e [modo DEBUG de vídeo na captura](qa-recorded-camera-2026-09-30.md): núcleo **117/117**, Node **21/21**, suíte Xcode final no simulador **134/134**, zero falhas/skips (117 núcleo + 10 UI + 7 hospedados; `Test-SquatCounter-2026.09.30_19-49-00--0300.xcresult`). Modelo real reconheceu a fixture oficial de punho; associação e comandos temporais têm regressões. Isso não comprova leitura de mãos à distância ou rastreamento no box.
+
+Astra revelou/corrigiu rival parcialmente cortado ausente da associação, perda entre amostras de mão e encerramento antes da entrega do último resultado. Registros RED→GREEN no relatório. Capturas UI em retrato/paisagem são do **simulador**. Build e instalação no **iPhone de fabio físico** passaram e mantiveram índice do Histórico idêntico; vídeos enviados. Teste UI físico bloqueado pelo perfil do runner/conta, e abertura remota do app recusada por aparelho bloqueado. Não há resultado físico deste incremento ainda. M0/M2, câmera pareada, beta iOS e Android continuam sem gate aprovado.
+
 ## Teste real no box — 30/09/2026, investigação posterior
 
-[Dados e limites](box-investigation-2026-09-30.md): dois vídeos novos do Histórico do iPhone físico, traseira/frontal, tiveram zero eventos e predominância de estado de reseleção. Mídia/replays copiados sem remover originais, fora do Git. Não houve nova inferência ou instalação durante essa investigação. A falha de utilidade no box está observada; M2 não passou. Quantidade de amostras pedindo reseleção não equivale a número de perdas independentes. Sem rótulos completos não há precisão/recall nem causa específica por quadro. Estratégia de gesto/ROI é proposta revisada por Astra, não correção entregue.
+[Dados e limites](box-investigation-2026-09-30.md): dois vídeos novos do Histórico do iPhone físico, traseira/frontal, tiveram zero eventos e predominância de estado de reseleção. Mídia/replays copiados sem remover originais, fora do Git. Não houve nova inferência ou instalação durante essa investigação. A falha de utilidade no box está observada; M2 não passou. Quantidade de amostras pedindo reseleção não equivale a número de perdas independentes. Sem rótulos completos não há precisão/recall nem causa específica por quadro. ROI continua proposta; gesto foi implementado posteriormente como experimento de controle, não correção de identidade.
 
 Após incluir as três regressões sintéticas de `PushUpPoseGeometry`, o núcleo passou **79/79** e Node **21/21** em 30/09. A nova suíte Xcode no simulador iPhone 15/iOS 27 passou **87/87**, zero falhas ou skips (79 núcleo + 8 UI), em `Test-SquatCounter-2026.09.30_13-41-08--0300.xcresult`. O resultado registra dois avisos internos de inversão de prioridade QoS; medir antes de atribuir impacto à captura física. Persistem avisos de APIs AVFoundation descontinuadas e coleta de diagnóstico do simulador. Testes sintéticos não aprovam flexão ou rastreamento no box. Não houve reinstalação desta alteração de geometria no iPhone durante o replay do usuário.
 
