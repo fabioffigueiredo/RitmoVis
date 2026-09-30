@@ -1,9 +1,13 @@
 # Handoff para Claude — RitmoVis
 
-**Atualizado em:** 29/09/2026
+**Atualizado em:** 30/09/2026
 
 **Branch de trabalho:** `feat/m2-android-a0`
 **Objetivo imediato:** tornar a seleção de uma pessoa em vídeo de grupo mensurável e segura antes de ampliar exercícios, distribuir beta ou iniciar Android.
+
+**Última solicitação — teste no box:** [investigação de 30/09](box-investigation-2026-09-30.md). Usuário precisa iniciar à distância e manter um atleta numa sala com várias pessoas. Duas sessões longas do Histórico tiveram zero eventos e predominância de reseleção; dados privados inspecionados, sem anotação completa ou causa por quadro adjudicada. Gesto + detector/rastreador separados + ROI exigem desenho aprovado. Revisão Astra reforçou recuperar alvo anterior sem substituição por colega. Não confundir pareamento com espelhamento, replay com reanálise ou mais vídeos com retreinamento.
+
+**Incremento de 30/09:** [relatório da demonstração](demo-box-2026-09-30.md). Há avaliador de clipe completo em `tools/evaluate-complete-clip.mjs`, tema temporário escuro/ciano, Lite/Full e modos experimentais recolhidos, espera de 3 s após seleção ao vivo e núcleo `PushUpCounter` **não integrado**. O teste sintético do contador de flexão não aprova flexão na UI. Primeiro obter rótulos privados completos e repetir o pipeline; M0/M2 não passaram. O modo de câmera preto em pareamento permanece questão separada. Para reconstruir o workspace após novos arquivos, executar `xcodegen generate` e `pod install --deployment`.
 
 **Correção mais recente — 29/09:** [relatório, causas, testes e limites](qa-tracking-correction-2026-09-29.md). A truncagem Vision em quatro poses foi removida; o rastreador conserva contexto temporário dos rivais e abstém-se em associações ambíguas; ausência breve do ângulo não descarta o ciclo se a identidade continua confirmada. A revisão Astra reproduziu dois defeitos da primeira implementação e confirmou suas correções. Build físico e 66 testes de núcleo + 5 UI passaram; 15 testes Node passaram. No build final instalado no iPhone, o caso original passou nos nove quadros rotulados, com 306/316 decisões `selected` e três eventos automáticos. **Não é validação geral de identidade/contagem, nem de MediaPipe.** Ativar Vision antes de reimportar para reproduzir o ensaio. A automação antiga está pausada e a sessão manual encerrada; a restrição histórica abaixo de não reinstalar não se aplica aos ensaios posteriores autorizados.
 
