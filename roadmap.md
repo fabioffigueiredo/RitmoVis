@@ -1,5 +1,7 @@
 # Evolução testada do RitmoVis
 
+**Achado físico posterior — 30/09:** [captura gravada no telefone](docs/qa-physical-recorded-input-2026-09-30.md) funciona e produz evidência real de tela. Individual: três eventos; grupo: zero e articulações do colega misturadas na pose central em duas capturas. Antes de aprimorar comandos ou trocar modelo, alinhar PTS/landmarks e anotar ciclos; separar rastreamento de ID de correção da pose. Gestos tiveram custo maior numa amostra curta; benchmark sustentado e positivos reais ainda pendentes. Sem avanço de M0/M2/beta.
+
 **QA de captura gravada — 30/09:** [reprodução no iPhone físico](docs/qa-recorded-camera-2026-09-30.md). Ferramenta DEBUG para exercitar o caminho de inferência ao vivo sem lentes, com aviso de vídeo gravado e Histórico preservado. Não satisfaz o gate de câmera real nem o de gestos/identidade; ensaio físico dos comandos e corpus independente continuam necessários.
 
 **Incremento de controle — 30/09:** [gestos e QA](docs/qa-hand-gestures-2026-09-30.md). Opção experimental de palma aberta para selecionar/iniciar e punho fechado para parar, com sustentação, confirmação e instruções. Implementação iOS; reconhecimento à distância e falsos comandos ainda exigem ensaio físico. Não altera gates M0/M2 nem entrega controle por gesto no Android.

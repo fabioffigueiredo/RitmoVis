@@ -39,6 +39,8 @@ Vídeos candidatos: [aceno em corpo inteiro, Pexels 5510480](https://www.pexels.
 
 ## Instalação e próximo ensaio físico — ainda pendente
 
+**Continuação após desbloqueio:** [fonte gravada e capturas no iPhone](qa-physical-recorded-input-2026-09-30.md). Com gestos ligados houve três eventos de repetição, mas nenhum comando por gesto registrado; seleção veio do gancho manual e não havia positivos deliberados anotados. 18,85 FPS/178 descartes numa execução curta indicam custo a medir em condições controladas. Isto não substitui o ensaio das lentes e dos gestos abaixo.
+
 Build/instalação desta versão no **iPhone de fabio** concluídos, com índice do Histórico preservado. Abertura para teste com clipe recusada pelo iOS porque o aparelho estava bloqueado; runner de UI físico também sem perfil de assinatura. [Evidência e continuação](qa-recorded-camera-2026-09-30.md). Não houve reconhecimento positivo de gesto no telefone nesta execução.
 
 No **iPhone de fabio**, após terminar replay e aceitar atualização, confirmar câmera real visível sem espelhamento que a bloqueie. Celular fixo, frontal e traseira, retrato/paisagem. Gravar privadamente:

@@ -1,10 +1,16 @@
 # Estado de QA — RitmoVis
 
+## Continuação física de fonte gravada — 30/09 à noite
+
+[Relatório atual](qa-physical-recorded-input-2026-09-30.md): usuário desbloqueou o iPhone de fabio e confirmou a prévia. Individual Lite: 742 quadros, três eventos, 24,64 FPS; com gestos: 565 quadros, três eventos, 18,85 FPS e 178 descartes. Grupo: zero eventos nas duas execuções. Nenhum quadro quase preto nos clipes. São amostras curtas sem precisão/recall ou benchmark controlado; três eventos não devem ser comparados diretamente às quatro contagens offline sem anotar o ciclo inicial/espera.
+
+Capturas reais DVT mostram mistura de articulações do colega na pose do alvo central enquanto a UI diz “Em foco”. Evidência em dois quadros, não troca contínua de identidade demonstrada. O alvo central parece agachar, enquanto colegas fazem afundos; anotar o clipe completo antes de explicar zero. Índice do Histórico permaneceu idêntico; app devolvido ao modo normal. Não houve câmera das lentes ou comando positivo por gesto, ensaio de dez minutos, teste Full/Android ou alteração de código nesta continuação. Runner físico continua bloqueado por perfil, apesar de captura DVT funcionar. Revisão final Astra manteve M2/beta sem aprovação.
+
 ## Gestos e fonte gravada de captura — 30/09, incremento posterior
 
 [Gestos experimentais](qa-hand-gestures-2026-09-30.md) e [modo DEBUG de vídeo na captura](qa-recorded-camera-2026-09-30.md): núcleo **117/117**, Node **21/21**, suíte Xcode final no simulador **134/134**, zero falhas/skips (117 núcleo + 10 UI + 7 hospedados; `Test-SquatCounter-2026.09.30_19-49-00--0300.xcresult`). Modelo real reconheceu a fixture oficial de punho; associação e comandos temporais têm regressões. Isso não comprova leitura de mãos à distância ou rastreamento no box.
 
-Astra revelou/corrigiu rival parcialmente cortado ausente da associação, perda entre amostras de mão e encerramento antes da entrega do último resultado. Registros RED→GREEN no relatório. Capturas UI em retrato/paisagem são do **simulador**. Build e instalação no **iPhone de fabio físico** passaram e mantiveram índice do Histórico idêntico; vídeos enviados. Teste UI físico bloqueado pelo perfil do runner/conta, e abertura remota do app recusada por aparelho bloqueado. Não há resultado físico deste incremento ainda. M0/M2, câmera pareada, beta iOS e Android continuam sem gate aprovado.
+Astra revelou/corrigiu rival parcialmente cortado ausente da associação, perda entre amostras de mão e encerramento antes da entrega do último resultado. Registros RED→GREEN no relatório. Capturas UI em retrato/paisagem são do **simulador**. Build e instalação no **iPhone de fabio físico** passaram e mantiveram índice do Histórico idêntico; vídeos enviados. Na tentativa inicial, teste UI físico bloqueado pelo perfil do runner/conta e abertura remota recusada por aparelho travado. A continuação física após desbloqueio está registrada acima; runner segue pendente. M0/M2, câmera pareada, beta iOS e Android continuam sem gate aprovado.
 
 ## Teste real no box — 30/09/2026, investigação posterior
 
