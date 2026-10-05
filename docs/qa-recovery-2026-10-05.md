@@ -120,6 +120,8 @@ A sequência `selected` em 8,0333 → `uncertain` em 8,0667 → reseleção em 8
 
 Vision deve primeiro ter seus sete eventos e identidade conferidos no clipe completo. Foi solicitada ao proprietário a contagem manual do atleta à direita a partir de 0,5 s; resposta ainda pendente nesta entrega. Uma contagem total coincidente, sozinha, não comprova autoria de cada evento nem ausência de perdas/duplicações. O principal conferiu novamente a tela de preparação normal do iPhone de fabio no Device Hub às 15:40 BRT, sem iniciar câmera ou treino.
 
+Após a conferência final, o principal encerrou o Device Hub usando **Quit and Keep Simulators Running**; inventário confirmou `isRunning: false` e `devicectl` ainda encontrou o processo RitmoVis no telefone. Não cancelou pareamento, encerrou Xcode, apagou dados ou fechou simuladores. Isso deixa a visualização remota fora do próximo teste físico; não comprova que câmera preta foi corrigida, pois as lentes não foram retestadas nesta etapa.
+
 Reprodução local (substituir apenas dispositivo; clipe permanece privado em Documents):
 
 ```sh
