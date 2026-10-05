@@ -2,6 +2,25 @@ import XCTest
 
 @MainActor
 final class WorkoutFlowUITests: XCTestCase {
+    // XCTest can mark a scrolled element hittable even when the sticky start
+    // action covers its center. Keep interaction inside the content viewport.
+    private func revealAboveStartAction(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<8 {
+            let upper = app.navigationBars.firstMatch.frame.maxY + 24
+            let lower = app.buttons["Iniciar treino"].frame.minY - 24
+            if element.exists && element.isHittable &&
+                element.frame.minY >= upper && element.frame.maxY <= lower { return }
+            let below = !element.exists || element.frame.maxY > lower
+            let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: below ? 0.3 : 0.7))
+            from.press(forDuration: 0.05, thenDragTo: to)
+        }
+        XCTAssertTrue(element.exists && element.isHittable, "O controle deve aparecer na área de conteúdo")
+        XCTAssertGreaterThanOrEqual(element.frame.minY, app.navigationBars.firstMatch.frame.maxY + 24)
+        XCTAssertLessThanOrEqual(element.frame.maxY, app.buttons["Iniciar treino"].frame.minY - 24,
+                                 "O controle não deve ficar sob a ação fixa")
+    }
+
     func testRecordedVideoInputIsLabelledAndAllowsSelectionAndStop() {
         let app = XCUIApplication()
         app.launchArguments = ["--qa-recorded-camera=pexels-8837118-1280w.mp4"]
@@ -38,19 +57,13 @@ final class WorkoutFlowUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--qa-synthetic-camera", "--qa-synthetic-targets"]
         app.launch()
-        app.buttons["Opções avançadas"].tap()
+        let advanced = app.buttons["Opções avançadas"]
+        revealAboveStartAction(advanced, in: app)
+        advanced.tap()
         let toggle = app.switches["gestureControlToggle"]
         XCTAssertTrue(toggle.waitForExistence(timeout: 10))
         XCTAssertEqual(toggle.value as? String, "0")
-        for _ in 0..<8 {
-            let y = toggle.frame.midY
-            let upper = app.navigationBars.firstMatch.frame.maxY + 24
-            let lower = app.buttons["Iniciar treino"].frame.minY - 24
-            if toggle.isHittable && y >= upper && y <= lower { break }
-            let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: y > lower ? 0.3 : 0.7))
-            from.press(forDuration: 0.05, thenDragTo: to)
-        }
+        revealAboveStartAction(toggle, in: app)
         XCTAssertTrue(toggle.isHittable)
         let control = toggle.switches.firstMatch
         if control.exists { control.tap() } else { toggle.tap() }
@@ -86,7 +99,7 @@ final class WorkoutFlowUITests: XCTestCase {
         XCTAssertTrue(explanation.exists)
         XCTAssertTrue(explanation.label.contains("joelho"))
         XCTAssertTrue(explanation.label.contains("enquadramento"))
-        for _ in 0..<5 where !select.isHittable { app.swipeUp() }
+        revealAboveStartAction(select, in: app)
         XCTAssertTrue(select.isHittable)
         select.tap()
         let notice = app.staticTexts["videoAnalysisNotice"]
@@ -96,7 +109,9 @@ final class WorkoutFlowUITests: XCTestCase {
         waitForExpectations(timeout: 5)
         XCTAssertTrue(app.buttons["Escolher outra pessoa ou ponto"].exists)
         XCTAssertFalse(app.buttons["Parar análise"].exists)
-        app.buttons["Escolher outra pessoa ou ponto"].tap()
+        let chooseAgain = app.buttons["Escolher outra pessoa ou ponto"]
+        revealAboveStartAction(chooseAgain, in: app)
+        chooseAgain.tap()
         XCTAssertTrue(select.waitForExistence(timeout: 5))
     }
 

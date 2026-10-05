@@ -13,6 +13,24 @@ struct PoseDetectionBatch: Sendable {
     let imageAspectRatio: Double
 }
 
+#if DEBUG
+extension QARawPoseFrame {
+    static func capture(pts: Double, poses: [PoseFrame], candidates: [PoseCandidate]) -> QARawPoseFrame {
+        let candidateIndices = Set(candidates.map(\.index))
+        // Enumerate the complete pre-filter pose array, not the candidate array.
+        return QARawPoseFrame(pts: pts, poses: poses.enumerated().map { index, pose in
+            // Confidence belongs to the chosen hip/knee/ankle trio, not a global
+            // person-detection probability or selection eligibility.
+            QARawPose(index: index, landmarks: pose.landmarks.enumerated().map { pointIndex, point in
+                QARawPosePoint(index: pointIndex, x: point.x, y: point.y,
+                              visibility: point.visibility, presence: point.presence)
+            }, confidence: pose.confidence, kneeAngle: pose.kneeAngle,
+                      hasTrackingCandidate: candidateIndices.contains(index))
+        })
+    }
+}
+#endif
+
 /// Adaptador fino: apenas converte o resultado local do MediaPipe em dados do contador.
 final class PoseDetector {
     private let landmarker: PoseLandmarker?

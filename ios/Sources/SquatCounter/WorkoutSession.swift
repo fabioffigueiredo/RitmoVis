@@ -77,6 +77,7 @@ private struct QAClipReport: Codable {
     let reselectionFrames: Int
     let diagnostics: ClipDiagnosticSummary
     let trace: [QATrackingFrame]?
+    let rawPoseDiagnostics: [QARawPoseFrame]?
 }
 
 private struct QATrackingFrame: Codable {
@@ -901,6 +902,12 @@ private final class CaptureSessionBox: @unchecked Sendable {
                 || args.contains("--qa-group-clip") || args.contains("--qa-group-select")
                 || importMonitoringEnabled
                 || args.contains(where: { $0.hasPrefix("--qa-private-clip=") }) else { return }
+        var rawPolicy = QARawPoseCapturePolicy(launchArguments: args)
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let rawDiagnostics: [QARawPoseFrame]? = rawPolicy.permits(source: source, privateDirectory: documents) ? results.compactMap {
+            guard rawPolicy.accept(at: $0.pts) else { return nil }
+            return QARawPoseFrame.capture(pts: $0.pts, poses: $0.poseOptions, candidates: $0.candidates)
+        } : nil
         let report = QAClipReport(analysisID: token.uuidString,
                                   stage: selectionRequested ? "selection-completed" : "first-pass-completed",
                                   recordedAt: Date(), model: videoBackendUsed,
@@ -936,7 +943,8 @@ private final class CaptureSessionBox: @unchecked Sendable {
                                                         return [joints.map { pose.landmarks[$0].x }.reduce(0, +) / 4,
                                                                 joints.map { pose.landmarks[$0].y }.reduce(0, +) / 4]
                                                     })
-                                  } : nil)
+                                  } : nil,
+                                  rawPoseDiagnostics: rawDiagnostics)
         do {
             let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let data = try JSONEncoder().encode(report)

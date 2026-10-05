@@ -1,6 +1,8 @@
 # Handoff para Claude — RitmoVis
 
-**Atualizado em:** 30/09/2026
+**Atualizado em:** 05/10/2026
+
+**Continuação atual:** [QA de 05/10](qa-recovery-2026-10-05.md). Perfil renovado até 12/10; confiança somente na conta existente após alerta físico exato e autorização específica. App voltou a executar no mesmo bundle, sem apagar Histórico; índice idêntico. Relatório pendente recuperado é de 30/09, distinto dos três 7209 e dois box novos completos. Full 0,5 s reproduziu 201/27/230 e perdas em 2,0667/8,1 s; traseira não confirmou escolha, frontal gravado terminou com um evento não validado. Resumo local, interação dos testes UI e diagnóstico DEBUG opt-in privado/limitado de poses brutas implementados, sem modificar rastreamento/modelos: **123 núcleo/29 Node/141 Xcode**, zero falhas/skips. Nova captura bruta confirma ausência do alvo na saída do modelo em 2,0667 s e duplicação do atleta à direita em 8,0667 s; próximos experimentos devem proteger cruzamentos/oclusão antes de patch de associação. Sem retreinamento, gate ou publicação; não apagar Histórico como correção de assinatura.
 
 **Estado mais recente — teste físico após desbloqueio:** [QA de fonte gravada no telefone](qa-physical-recorded-input-2026-09-30.md). Execução real no iPhone de fabio: individual teve três eventos, grupo zero; opção de gesto manteve três eventos mas aumentou custo/descartes numa execução curta. Agora há PNG reais por DVT, sem runner ou lentes. Capturas de grupo mostram mistura de braço/perna do colega enquanto o atleta central fica “Em foco”; não confundir com troca temporal de identidade comprovada. O alvo central parece agachar, embora colegas façam afundos; anotar antes de interpretar zero. Histórico idêntico após testes, app reiniciado sem flags QA. Próximo passo: associar imagens a PTS, revisar pose/confianças e rotular ciclos. Sem retreinamento/alteração de código/modelos nesta continuação; M2, gestos positivos, câmera real e beta pendentes.
 
@@ -43,7 +45,7 @@
 | Uma pessoa | MediaPipe Lite/Full, máquina de estados de agachamento e avaliação de eventos | clipe local de QA contou 4 ciclos; não há corpus anotado suficiente para alegação de precisão |
 | Grupo / M2 | múltiplas poses, seleção explícita, `TargetTracker` com geometria + aparência temporária, abstenção e `OfflineTargetAnalyzer` | reensaio de cinco seleções privadas no simulador; cobertura melhorou em algumas e não em outras; ainda não há verdade humana de ID; M2 **não passou** |
 | Contrato iOS/Android | `fixtures/tracking-v1-synthetic.json` e teste Swift | sintético; Android ainda não foi criado/testado |
-| QA automatizado | 117 testes de núcleo + 10 UI + 7 hospedados + 21 Node | 134/134 Xcode no simulador em 30/09, zero skips; 21/21 Node. Runner UI físico bloqueado por assinatura; build/instalação e execução de fonte gravada por CLI passaram, com capturas reais DVT e limites no relatório físico |
+| QA automatizado | 123 testes de núcleo + 10 UI + 8 hospedados + 29 Node | 141/141 Xcode no simulador em 05/10, zero falhas/skips; 123/123 Swift e 29/29 Node. Build físico/CLI e Release iOS para simulador passaram; runner UI físico não repetido após renovação. Diagnóstico privado preserva poses rejeitadas, sem mudar tracking |
 
 ## O que não afirmar
 
@@ -65,13 +67,13 @@ primeiro passe → cache de poses → toque no alvo → OfflineTargetAnalyzer
     → mesmo AVPlayer, contagem apenas a partir do quadro escolhido
 ```
 
-`PoseDetector` usa MediaPipe na câmera ao vivo. Para importação de grupo há uma opção experimental de Apple Vision, porque funcionou melhor no único clipe comparado. A opção não deve alterar a câmera ao vivo. A calibração opcional de quadro em pé é `standing-reference-v1`; ela é por seleção e não é avaliação de forma.
+`PoseDetector` usa MediaPipe na câmera ao vivo. Para importação de grupo há uma opção experimental de Apple Vision. Na comparação pareada 7209 de 05/10 Vision teve 421 decisões selecionadas/37 incertas/zero reseleção e sete eventos não validados, contra quatro variantes MediaPipe com perdas; prioridade de anotação, não gate de qualidade/identidade. IMAGE independente não resolveu MediaPipe. A opção não deve alterar a câmera ao vivo. A calibração opcional de quadro em pé é `standing-reference-v1`; ela é por seleção e não é avaliação de forma.
 
 ## Próxima sequência de trabalho — não pular
 
 1. **M0:** anotar manualmente 50+ ciclos autorizados, separar ajuste de aceitação e executar o avaliador. Rodar câmera 10 min no iPhone quando a condição de pareamento estiver definida.
 2. **M2:** ampliar as nove marcações da regressão de 29/09 para os clipes completos, conforme [esquema M2](m2-annotation-schema.md), e obter sessão independente com ao menos dois cenários consentidos de cruzamento. Medir cobertura, troca de identidade, TP/FP/FN e períodos de abstenção. Não usar o corpus de ajuste como holdout nem estados `selected` como verdade humana. Repetir MediaPipe no último patch antes de alegar melhoria nesse backend.
-3. Corrigir/reproduzir o bloqueio de runner UI físico somente se houver conta/perfil Apple válidos. Não alterar contas, senhas ou permissões sem o proprietário.
+3. Runner UI físico não foi repetido após renovar perfil/confiança: distinguir esse gate da execução física por CLI que passou em 05/10. Não alterar contas, senhas ou permissões sem o proprietário.
 4. Só depois discutir promoção de Vision/calibração, beta iOS, novos exercícios ou Android A0.
 
 ## Comandos reproduzíveis
@@ -98,4 +100,4 @@ Para o dispositivo, use o UDID e caminhos já registrados em `docs/qa-group-sele
 
 ## Histórico e dívida relevante
 
-Leia [histórico do projeto](project-history.md). Dívidas abertas: métrica `noPoseFrames` mistura ausência de alvo selecionado e ausência de pessoa; originais MOV 4K/10-bit e desempenho longo ainda não foram testados após suporte a rotação; avisos de APIs AVFoundation obsoletas; captura preta quando o iPhone está pareado; runner de UI físico sem perfil; nome/marca RitmoVis não verificados.
+Leia [histórico do projeto](project-history.md). Dívidas abertas: métrica `noPoseFrames` mistura ausência de alvo selecionado e ausência de pessoa e conserva o primeiro passe após seleção offline; originais MOV 4K/10-bit e desempenho longo ainda não foram testados após suporte a rotação; avisos de APIs AVFoundation obsoletas; captura preta quando o iPhone está pareado; runner de UI físico não reverificado após renovação; nome/marca RitmoVis não verificados.

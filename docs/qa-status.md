@@ -1,5 +1,13 @@
 # Estado de QA — RitmoVis
 
+## Continuação de 05/10/2026
+
+[Diagnóstico e bateria física concluída](qa-recovery-2026-10-05.md): perfil renovado, confiança somente no desenvolvedor existente após alerta e autorização específica; app executa novamente. Três 7209 Lite/Full reproduziram perda do alvo. Box traseira terminou sem seleção confirmada; frontal na fila de captura gravada chegou ao EOF: 231,53 s, 4.722 processados/2.217 descartes e um evento não validado. Não abre lentes. Relatório pendente do box recuperado é de 30/09: 3.524 processados/1.784 descartes, zero eventos; manter como evidência herdada. Índice do Histórico continua idêntico.
+
+QA novo de código: **123/123 núcleo Swift, 29/29 Node e 141/141 Xcode**, zero falhas/skips; resumo da primeira perda e captura DEBUG opt-in limitada/privada de poses brutas testados RED→GREEN. Corrigidos somente os toques/rolagem dos testes UI, sem relaxar elegibilidade. Full 0,5 s novo confirma primeira perda em 2,0667 s e primeira reseleção em 8,1 s; captura bruta de 12 quadros mostra ausência do alvo já na saída do modelo e, depois, duas poses sobre o atleta à direita. 230 amostras de reseleção representam um estado persistente. Lite antigo não concluiu seleção, diferente do Lite novo selecionado em 2 s. M0/M2, câmera real, gestos e beta continuam sem gate; proteção de identidade e modelos não foram alterados.
+
+Comparação pareada de cinco baselines, mesma seleção em 0,5 s: IMAGE independente não resolve a perda em MediaPipe e entra em reseleção antes de VIDEO. Vision existente conserva 421 quadros selecionados/37 incertos/zero reseleção, com sete eventos não anotados; candidato à próxima verificação humana, não precisão comprovada. Builds Release do núcleo Mac e do app iOS para simulador passaram, não distribuição física. App devolvido normal sem flags e índice idêntico às 15:36 BRT.
+
 ## Continuação física de fonte gravada — 30/09 à noite
 
 [Relatório atual](qa-physical-recorded-input-2026-09-30.md): usuário desbloqueou o iPhone de fabio e confirmou a prévia. Individual Lite: 742 quadros, três eventos, 24,64 FPS; com gestos: 565 quadros, três eventos, 18,85 FPS e 178 descartes. Grupo: zero eventos nas duas execuções. Nenhum quadro quase preto nos clipes. São amostras curtas sem precisão/recall ou benchmark controlado; três eventos não devem ser comparados diretamente às quatro contagens offline sem anotar o ciclo inicial/espera.
